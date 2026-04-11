@@ -2,6 +2,9 @@
 // src/layouts/Base.astro
 import { ClientRouter } from 'astro:transitions';
 import Nav from '../components/Nav.astro';
+import ShellPalette from '../components/ShellPalette.astro';
+import KeyboardNav from '../components/KeyboardNav.astro';
+import HelpOverlay from '../components/HelpOverlay.astro';
 import '../styles/global.css';
 
 interface Props {
@@ -35,6 +38,9 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
       <main>
         <slot />
       </main>
+      <ShellPalette />
+      <KeyboardNav />
+      <HelpOverlay />
     </div>
   </body>
 </html>
