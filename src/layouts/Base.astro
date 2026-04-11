@@ -33,6 +33,9 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
     <meta property="og:url" content={canonicalURL} />
+    <script is:inline>
+      document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
+    </script>
     <ClientRouter />
   </head>
   <body>

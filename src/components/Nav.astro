@@ -1,4 +1,6 @@
 ---
+import ThemeToggle from './ThemeToggle.astro';
+
 interface Props {
   currentPath: string;
 }
@@ -19,16 +21,19 @@ function isActive(href: string, current: string): boolean {
 
 <header class="nav">
   <a href="/" class="mark">justin<span class="dot">.</span>software</a>
-  <nav class="links">
-    {links.map(link => (
-      <a
-        href={link.href}
-        class:list={['nav-link', { active: isActive(link.href, currentPath) }]}
-      >
-        <span class="slash">/</span>{link.label}
-      </a>
-    ))}
-  </nav>
+  <div class="nav-right">
+    <nav class="links">
+      {links.map(link => (
+        <a
+          href={link.href}
+          class:list={['nav-link', { active: isActive(link.href, currentPath) }]}
+        >
+          <span class="slash">/</span>{link.label}
+        </a>
+      ))}
+    </nav>
+    <ThemeToggle />
+  </div>
 </header>
 
 <style>
@@ -50,6 +55,12 @@ function isActive(href: string, current: string): boolean {
 
   .dot {
     color: var(--accent);
+  }
+
+  .nav-right {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-6);
   }
 
   .links {

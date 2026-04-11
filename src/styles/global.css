@@ -3,18 +3,6 @@
 @import '@fontsource/fira-code/500.css';
 
 :root {
-  /* Colors */
-  --bg: #0c0c0c;
-  --text: #f5f5f5;
-  --text-secondary: #888;
-  --text-tertiary: #555;
-  --text-muted: #444;
-  --text-link: #bbb;
-  --border: #1a1a1a;
-  --surface: #161616;
-  --accent: #4353ff;
-  --grid: rgba(255, 255, 255, 0.025);
-
   /* Typography */
   --font-body: 'Plus Jakarta Sans Variable', -apple-system, system-ui, sans-serif;
   --font-mono: 'SF Mono', 'Fira Code', 'Fira Mono', monospace;
@@ -35,6 +23,40 @@
   --max-width: 720px;
   --page-padding: var(--sp-10);
   --grid-size: 40px;
+}
+
+/* Dark theme (default) */
+:root, [data-theme="dark"] {
+  --bg: #0c0c0c;
+  --text: #f5f5f5;
+  --text-secondary: #888;
+  --text-tertiary: #555;
+  --text-muted: #444;
+  --text-link: #bbb;
+  --border: #1a1a1a;
+  --surface: #161616;
+  --accent: #4353ff;
+  --grid: rgba(255, 255, 255, 0.025);
+  --selection: rgba(255, 255, 255, 0.12);
+  --nav-selected-bg: rgba(255, 255, 255, 0.04);
+  --nav-selected-outline: rgba(255, 255, 255, 0.08);
+}
+
+/* Light theme */
+[data-theme="light"] {
+  --bg: #fafafa;
+  --text: #111;
+  --text-secondary: #555;
+  --text-tertiary: #999;
+  --text-muted: #aaa;
+  --text-link: #444;
+  --border: #e2e2e2;
+  --surface: #fff;
+  --accent: #4353ff;
+  --grid: rgba(0, 0, 0, 0.04);
+  --selection: rgba(0, 0, 0, 0.08);
+  --nav-selected-bg: rgba(0, 0, 0, 0.04);
+  --nav-selected-outline: rgba(0, 0, 0, 0.08);
 }
 
 *, *::before, *::after {
@@ -71,7 +93,7 @@ a:hover {
 }
 
 ::selection {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--selection);
 }
 
 /* Utility classes */
@@ -134,9 +156,9 @@ a:hover {
 
 /* Keyboard selection */
 [data-nav-selected] {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--nav-selected-bg);
   border-radius: var(--sp-2);
-  outline: 1px solid rgba(255, 255, 255, 0.08);
+  outline: 1px solid var(--nav-selected-outline);
   outline-offset: -1px;
 }
 

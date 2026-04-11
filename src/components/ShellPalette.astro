@@ -203,7 +203,8 @@ const routes = [
 </script>
 
 <style is:global>
-  :root {
+  /* Palette dark theme */
+  :root, [data-theme="dark"] {
     --pal-bg: #1a1b26;
     --pal-border: #292d3e;
     --pal-text: #eeffff;
@@ -216,6 +217,22 @@ const routes = [
     --pal-yellow: #f1fa8c;
     --pal-active-bg: rgba(130, 170, 255, 0.12);
     --pal-hover-bg: rgba(255, 255, 255, 0.03);
+  }
+
+  /* Palette light theme */
+  [data-theme="light"] {
+    --pal-bg: #fff;
+    --pal-border: #e2e2e2;
+    --pal-text: #111;
+    --pal-text-dim: #555;
+    --pal-text-muted: #888;
+    --pal-text-faint: #aaa;
+    --pal-accent: #4353ff;
+    --pal-purple: #7c3aed;
+    --pal-green: #16a34a;
+    --pal-yellow: #ca8a04;
+    --pal-active-bg: rgba(67, 83, 255, 0.08);
+    --pal-hover-bg: rgba(0, 0, 0, 0.03);
   }
 
   .palette-overlay {

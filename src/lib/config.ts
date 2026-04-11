@@ -1,10 +1,11 @@
 /** Shared utilities for the justin.software build. */
 
-/** Format a Date as YYYY.MM for display. */
+/** Format a Date as YYYY.MM.DD for display. */
 export function formatDate(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
-  return `${y}.${m}`;
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}.${m}.${d}`;
 }
 
 /** Sort posts by date descending with optional limit. */
