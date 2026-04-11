@@ -35,7 +35,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
   <body>
     <div class="page">
       <Nav currentPath={Astro.url.pathname} />
-      <main transition:animate="slide" transition:name="main-content">
+      <main transition:name="main-content">
         <slot />
       </main>
     </div>
@@ -46,9 +46,12 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 </html>
 
 <script>
+  import { navigate } from 'astro:transitions/client';
+
+  // Expose navigate globally so KeyboardNav can use it
+  (window as any).__astro_navigate = navigate;
+
   // ── Directional slide transitions ───────────────────────────────
-  // Detect navigation direction from the data attribute set by KeyboardNav
-  // or infer it from the page order when using nav links.
   const PAGE_ORDER = ['/', '/about', '/writing', '/links'];
 
   function getPageIndex(path: string): number {
@@ -60,17 +63,20 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
     return 0;
   }
 
+  // Set direction before any navigation (keyboard or click)
   document.addEventListener('astro:before-preparation', (e: any) => {
-    const from = getPageIndex(window.location.pathname);
-    const to = getPageIndex(new URL(e.to, window.location.origin).pathname);
-    document.documentElement.dataset.navDirection = to >= from ? 'forward' : 'back';
+    // Only set if not already set by keyboard nav
+    if (!document.documentElement.dataset.navDirection) {
+      const from = getPageIndex(window.location.pathname);
+      const to = getPageIndex(new URL(e.to, window.location.origin).pathname);
+      document.documentElement.dataset.navDirection = to >= from ? 'forward' : 'back';
+    }
   });
 
   document.addEventListener('astro:after-swap', () => {
-    // Clean up after transition completes
     setTimeout(() => {
       delete document.documentElement.dataset.navDirection;
-    }, 300);
+    }, 400);
   });
 </script>
 
@@ -89,34 +95,52 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 
 <style is:global>
   /* Directional slide transitions — must be global to match Astro's generated attributes */
+  /* Forward: new content enters from right */
   [data-nav-direction="forward"] [data-astro-transition="main-content"] {
-    animation: slide-in-right 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: slide-in-right 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
   [data-nav-direction="forward"] [data-astro-transition="main-content"][data-astro-transition-fallback="old"] {
-    animation: slide-out-left 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: slide-out-left 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
+  /* Back: new content enters from left */
   [data-nav-direction="back"] [data-astro-transition="main-content"] {
-    animation: slide-in-left 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: slide-in-left 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
   [data-nav-direction="back"] [data-astro-transition="main-content"][data-astro-transition-fallback="old"] {
-    animation: slide-out-right 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: slide-out-right 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* Default (clicking nav links without direction set): simple fade */
+  [data-astro-transition="main-content"]:not([data-astro-transition-fallback]) {
+    animation: content-fade-in 0.2s ease both;
+  }
+  [data-astro-transition="main-content"][data-astro-transition-fallback="old"] {
+    animation: content-fade-out 0.15s ease both;
   }
 
   @keyframes slide-in-right {
-    from { opacity: 0; transform: translateX(40px); }
+    from { opacity: 0; transform: translateX(24px); }
     to   { opacity: 1; transform: translateX(0); }
   }
   @keyframes slide-out-left {
     from { opacity: 1; transform: translateX(0); }
-    to   { opacity: 0; transform: translateX(-40px); }
+    to   { opacity: 0; transform: translateX(-24px); }
   }
   @keyframes slide-in-left {
-    from { opacity: 0; transform: translateX(-40px); }
+    from { opacity: 0; transform: translateX(-24px); }
     to   { opacity: 1; transform: translateX(0); }
   }
   @keyframes slide-out-right {
     from { opacity: 1; transform: translateX(0); }
-    to   { opacity: 0; transform: translateX(40px); }
+    to   { opacity: 0; transform: translateX(24px); }
+  }
+  @keyframes content-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes content-fade-out {
+    from { opacity: 1; }
+    to   { opacity: 0; }
   }
 </style>

@@ -28,7 +28,7 @@ function formatDate(date: Date): string {
 <ul class="post-list" role="list">
   {sorted.map(post => (
     <li class="post-row">
-      <a href={`/writing/${post.id}`} class="post-link" data-post-id={post.id}>
+      <a href={`/writing/${post.id}`} class="post-link" data-nav-item data-post-id={post.id}>
         <span class="post-title">{post.data.title}</span>
         <span class="post-date mono-date">{formatDate(post.data.date)}</span>
       </a>
@@ -67,11 +67,11 @@ function formatDate(date: Date): string {
     color: var(--text);
   }
 
-  .post-link[data-selected] .post-title {
+  .post-link[data-nav-selected] .post-title {
     color: var(--text);
   }
 
-  .post-link[data-selected] {
+  .post-link[data-nav-selected] {
     background: rgba(255, 255, 255, 0.03);
     margin: 0 -8px;
     padding: 12px 8px;

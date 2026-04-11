@@ -166,6 +166,14 @@ a:hover {
   border-radius: 4px;
 }
 
+/* Keyboard navigation selection */
+[data-nav-selected] {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-radius: 4px;
+  outline: 1px solid rgba(255, 255, 255, 0.08);
+  outline-offset: -1px;
+}
+
 @media (max-width: 640px) {
   :root {
     --page-padding: 20px;
