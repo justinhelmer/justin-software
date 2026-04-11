@@ -1,12 +1,13 @@
 ---
 /**
- * Keyboard navigation — reads page structure from the actual nav links.
+ * Keyboard navigation.
  *
- *   ← / →     traverse pages (clicks the real nav <a> elements)
- *   ↑ / ↓     select items within the current page
- *   Enter      open selected item
- *   Escape     clear selection
- *   Backspace  back to parent page
+ * Horizontal axis: all [data-nav-bar] elements in the header
+ *   (nav links + theme toggle). Arrow right/left traverses them.
+ *   Enter on a link navigates. Enter on a button activates it.
+ *
+ * Vertical axis: [data-nav-item] elements on the current page.
+ *   Arrow up/down selects. Enter opens.
  */
 ---
 
@@ -19,47 +20,48 @@
     return false;
   }
 
-  function getNavLinks(): HTMLAnchorElement[] {
-    return Array.from(document.querySelectorAll('header nav a[href]'));
+  // ── Horizontal: nav bar items ─────────────────────────────────
+
+  function getBarItems(): HTMLElement[] {
+    return Array.from(document.querySelectorAll('[data-nav-bar]'));
   }
 
-  function currentNavIndex(): number {
+  function currentBarIndex(): number {
     const path = window.location.pathname.replace(/\/$/, '') || '/';
-    const links = getNavLinks();
-    // Check for exact match on nav links
-    for (let i = 0; i < links.length; i++) {
-      if (links[i].getAttribute('href') === path) return i;
+    const items = getBarItems();
+    // Find active nav link by href match
+    for (let i = 0; i < items.length; i++) {
+      const href = items[i].getAttribute('href');
+      if (href === path) return i;
+      if (href && href !== '/' && path.startsWith(href)) return i;
     }
-    // Check for prefix match (e.g. /writing/post → /writing)
-    for (let i = links.length - 1; i >= 0; i--) {
-      const href = links[i].getAttribute('href') || '';
-      if (href !== '/' && path.startsWith(href)) return i;
-    }
-    // On home page → return -1 (before the first nav link)
-    return -1;
+    return -1; // on home (before first nav link)
   }
 
-  function clickNavLink(index: number) {
-    const links = getNavLinks();
-    if (index >= 0 && index < links.length) {
-      links[index].click();
+  function activateBarItem(index: number) {
+    const items = getBarItems();
+    if (index < 0 || index >= items.length) return;
+    const el = items[index];
+    // If it's a link, click it (navigates via ClientRouter)
+    if (el instanceof HTMLAnchorElement) {
+      el.click();
+    } else {
+      // It's a button (theme toggle etc.) — click it
+      el.click();
     }
   }
 
-  function goHome() {
-    const mark = document.querySelector('header a[href="/"]') as HTMLAnchorElement | null;
-    if (mark) mark.click();
-  }
+  // ── Vertical: page items ──────────────────────────────────────
 
-  function items(): HTMLAnchorElement[] {
+  function getPageItems(): HTMLAnchorElement[] {
     return Array.from(document.querySelectorAll('[data-nav-item]'));
   }
 
-  function selected(list: HTMLAnchorElement[]): number {
+  function selectedIndex(list: HTMLElement[]): number {
     return list.findIndex(el => el.hasAttribute('data-nav-selected'));
   }
 
-  function select(list: HTMLAnchorElement[], i: number) {
+  function select(list: HTMLElement[], i: number) {
     list.forEach(el => el.removeAttribute('data-nav-selected'));
     if (i >= 0 && i < list.length) {
       list[i].setAttribute('data-nav-selected', '');
@@ -73,50 +75,54 @@
     );
   }
 
+  // ── Keyboard handler ──────────────────────────────────────────
+
   document.addEventListener('keydown', (e) => {
     if (blocked()) return;
 
-    const navLinks = getNavLinks();
-    const navIdx = currentNavIndex();
-    const list = items();
-    const sel = selected(list);
+    const barItems = getBarItems();
+    const barIdx = currentBarIndex();
+    const pageItems = getPageItems();
+    const sel = selectedIndex(pageItems);
 
     switch (e.key) {
       case 'ArrowRight':
         e.preventDefault();
-        if (navIdx < navLinks.length - 1) {
-          clickNavLink(navIdx + 1);
+        if (barIdx < barItems.length - 1) {
+          activateBarItem(barIdx + 1);
         }
         break;
 
       case 'ArrowLeft':
         e.preventDefault();
-        if (navIdx > 0) {
-          clickNavLink(navIdx - 1);
-        } else if (navIdx === 0) {
-          goHome();
+        if (barIdx > 0) {
+          activateBarItem(barIdx - 1);
+        } else if (barIdx === 0) {
+          // Go home
+          const mark = document.querySelector('header a[href="/"]') as HTMLAnchorElement | null;
+          if (mark) mark.click();
         }
         break;
 
       case 'ArrowDown':
-        if (!list.length) break;
+        if (!pageItems.length) break;
         e.preventDefault();
-        if (sel < list.length - 1) select(list, sel + 1);
-        else if (sel === -1) select(list, 0);
+        if (sel < pageItems.length - 1) select(pageItems, sel + 1);
+        else if (sel === -1) select(pageItems, 0);
         break;
 
       case 'ArrowUp':
-        if (!list.length) break;
+        if (!pageItems.length) break;
         e.preventDefault();
-        if (sel > 0) select(list, sel - 1);
-        else if (sel === -1) select(list, list.length - 1);
+        if (sel > 0) select(pageItems, sel - 1);
+        else if (sel === -1) select(pageItems, pageItems.length - 1);
         break;
 
       case 'Enter':
-        if (sel >= 0 && list[sel]) {
-          const href = list[sel].getAttribute('href') || '';
+        if (sel >= 0 && pageItems[sel]) {
+          const href = (pageItems[sel] as HTMLAnchorElement).getAttribute('href') || '';
           if (!href.startsWith('http') && !href.startsWith('mailto:')) e.preventDefault();
-          list[sel].click();
+          pageItems[sel].click();
         }
         break;
 
@@ -125,12 +131,11 @@
         break;
 
       case 'Backspace': {
-        // If on a sub-page (e.g. /writing/post), go to its parent nav link
         const path = window.location.pathname.replace(/\/$/, '') || '/';
-        const parentHref = navLinks[navIdx]?.getAttribute('href');
+        const parentHref = barItems[barIdx]?.getAttribute('href');
         if (parentHref && path !== parentHref) {
           e.preventDefault();
-          clickNavLink(navIdx);
+          activateBarItem(barIdx);
         }
         break;
       }
