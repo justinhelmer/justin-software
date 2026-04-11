@@ -15,6 +15,8 @@ const routes = [
 ];
 ---
 
+<script type="application/json" id="palette-routes" set:html={JSON.stringify(routes)} />
+
 <div id="shell-palette" class="palette-overlay" aria-hidden="true">
   <div class="palette-backdrop"></div>
   <div class="palette-container">
@@ -37,117 +39,124 @@ const routes = [
   </div>
 </div>
 
-<script define:vars={{ routes }}>
-  const palette = document.getElementById('shell-palette');
-  const input = document.getElementById('palette-input');
-  const completionsEl = document.getElementById('palette-completions');
-  let isOpen = false;
-  let activeIndex = 0;
-  let filtered = [];
+<script>
+  function initPalette() {
+    const routeData = document.getElementById('palette-routes');
+    if (!routeData) return;
+    const routes = JSON.parse(routeData.textContent || '[]');
 
-  function open() {
-    isOpen = true;
-    palette.setAttribute('aria-hidden', 'false');
-    input.value = '';
-    activeIndex = 0;
-    updateCompletions('');
-    input.focus();
-  }
+    const palette = document.getElementById('shell-palette');
+    const input = document.getElementById('palette-input') as HTMLInputElement | null;
+    const completionsEl = document.getElementById('palette-completions');
+    if (!palette || !input || !completionsEl) return;
 
-  function close() {
-    isOpen = false;
-    palette.setAttribute('aria-hidden', 'true');
-    input.value = '';
-    input.blur();
-  }
+    let isOpen = false;
+    let activeIndex = 0;
+    let filtered: typeof routes = [];
 
-  function navigate(path) {
-    close();
-    window.location.href = path;
-  }
-
-  function fuzzyMatch(query, label) {
-    if (!query) return true;
-    const q = query.toLowerCase();
-    const l = label.toLowerCase();
-    let qi = 0;
-    for (let li = 0; li < l.length && qi < q.length; li++) {
-      if (l[li] === q[qi]) qi++;
-    }
-    return qi === q.length;
-  }
-
-  function updateCompletions(query) {
-    filtered = routes.filter(r => fuzzyMatch(query, r.label));
-    activeIndex = Math.min(activeIndex, Math.max(0, filtered.length - 1));
-
-    completionsEl.innerHTML = filtered.map((r, i) => {
-      const isActive = i === activeIndex;
-      const display = r.type === 'page' ? r.label + '/' : r.label;
-      const pathDisplay = r.path === '/' ? '~' : r.path;
-      return `<div class="completion${isActive ? ' active' : ''}" data-index="${i}" data-path="${r.path}">
-        <span class="completion-label">${display}</span>
-        <span class="completion-path">${pathDisplay}</span>
-      </div>`;
-    }).join('');
-  }
-
-  input?.addEventListener('input', () => {
-    activeIndex = 0;
-    updateCompletions(input.value);
-  });
-
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
-      e.preventDefault();
-      isOpen ? close() : open();
-      return;
+    function open() {
+      isOpen = true;
+      palette.setAttribute('aria-hidden', 'false');
+      input.value = '';
+      activeIndex = 0;
+      updateCompletions('');
+      input.focus();
     }
 
-    if (!isOpen) return;
+    function close() {
+      isOpen = false;
+      palette.setAttribute('aria-hidden', 'true');
+      input.value = '';
+      input.blur();
+    }
 
-    if (e.key === 'Escape') {
-      e.preventDefault();
+    function navigate(path: string) {
       close();
-    } else if (e.key === 'Tab') {
-      e.preventDefault();
-      if (filtered.length > 0) {
-        activeIndex = (activeIndex + (e.shiftKey ? -1 : 1) + filtered.length) % filtered.length;
-        updateCompletions(input.value);
-      }
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      if (filtered.length > 0) {
-        activeIndex = (activeIndex + 1) % filtered.length;
-        updateCompletions(input.value);
-      }
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      if (filtered.length > 0) {
-        activeIndex = (activeIndex - 1 + filtered.length) % filtered.length;
-        updateCompletions(input.value);
-      }
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      if (filtered[activeIndex]) {
-        navigate(filtered[activeIndex].path);
-      }
+      window.location.href = path;
     }
-  });
 
-  completionsEl?.addEventListener('click', (e) => {
-    const item = e.target.closest('.completion');
-    if (item) {
-      navigate(item.dataset.path);
+    function fuzzyMatch(query: string, label: string) {
+      if (!query) return true;
+      const q = query.toLowerCase();
+      const l = label.toLowerCase();
+      let qi = 0;
+      for (let li = 0; li < l.length && qi < q.length; li++) {
+        if (l[li] === q[qi]) qi++;
+      }
+      return qi === q.length;
     }
-  });
 
-  palette?.querySelector('.palette-backdrop')?.addEventListener('click', close);
+    function updateCompletions(query: string) {
+      filtered = routes.filter((r: any) => fuzzyMatch(query, r.label));
+      activeIndex = Math.min(activeIndex, Math.max(0, filtered.length - 1));
 
-  document.addEventListener('astro:page-load', () => {
-    isOpen = false;
-    palette?.setAttribute('aria-hidden', 'true');
-  });
+      completionsEl.innerHTML = filtered.map((r: any, i: number) => {
+        const isActive = i === activeIndex;
+        const display = r.type === 'page' ? r.label + '/' : r.label;
+        const pathDisplay = r.path === '/' ? '~' : r.path;
+        return `<div class="completion${isActive ? ' active' : ''}" data-index="${i}" data-path="${r.path}">
+          <span class="completion-label">${display}</span>
+          <span class="completion-path">${pathDisplay}</span>
+        </div>`;
+      }).join('');
+    }
+
+    input.addEventListener('input', () => {
+      activeIndex = 0;
+      updateCompletions(input.value);
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        isOpen ? close() : open();
+        return;
+      }
+
+      if (!isOpen) return;
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        close();
+      } else if (e.key === 'Tab') {
+        e.preventDefault();
+        if (filtered.length > 0) {
+          activeIndex = (activeIndex + (e.shiftKey ? -1 : 1) + filtered.length) % filtered.length;
+          updateCompletions(input.value);
+        }
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (filtered.length > 0) {
+          activeIndex = (activeIndex + 1) % filtered.length;
+          updateCompletions(input.value);
+        }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (filtered.length > 0) {
+          activeIndex = (activeIndex - 1 + filtered.length) % filtered.length;
+          updateCompletions(input.value);
+        }
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (filtered[activeIndex]) {
+          navigate(filtered[activeIndex].path);
+        }
+      }
+    });
+
+    completionsEl.addEventListener('click', (e) => {
+      const item = (e.target as HTMLElement).closest('.completion') as HTMLElement | null;
+      if (item?.dataset.path) {
+        navigate(item.dataset.path);
+      }
+    });
+
+    palette.querySelector('.palette-backdrop')?.addEventListener('click', close);
+  }
+
+  // Init on first load and on view transitions
+  initPalette();
+  document.addEventListener('astro:after-swap', initPalette);
 </script>
 
 <style>

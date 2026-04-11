@@ -91,7 +91,7 @@
     }
   });
 
-  document.addEventListener('astro:page-load', () => {
+  document.addEventListener('astro:after-swap', () => {
     gPending = false;
     if (gTimer) clearTimeout(gTimer);
   });
