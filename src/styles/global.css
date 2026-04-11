@@ -1,4 +1,4 @@
-@import '@fontsource-variable/inter';
+@import '@fontsource-variable/plus-jakarta-sans';
 @import '@fontsource/fira-code/400.css';
 @import '@fontsource/fira-code/500.css';
 
@@ -16,7 +16,7 @@
   --grid: rgba(255, 255, 255, 0.025);
 
   /* Typography */
-  --font-body: 'Inter Variable', -apple-system, system-ui, sans-serif;
+  --font-body: 'Plus Jakarta Sans Variable', -apple-system, system-ui, sans-serif;
   --font-mono: 'SF Mono', 'Fira Code', 'Fira Mono', monospace;
 
   /* Spacing scale (4px base) */
