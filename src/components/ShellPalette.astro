@@ -1,0 +1,266 @@
+---
+import { getCollection } from 'astro:content';
+
+const posts = await getCollection('writing');
+const routes = [
+  { path: '/', label: 'home', type: 'page' },
+  { path: '/about', label: 'about', type: 'page' },
+  { path: '/writing', label: 'writing', type: 'page' },
+  { path: '/links', label: 'links', type: 'page' },
+  ...posts.map(p => ({
+    path: `/writing/${p.id}`,
+    label: p.data.title.toLowerCase(),
+    type: 'post',
+  })),
+];
+---
+
+<div id="shell-palette" class="palette-overlay" aria-hidden="true">
+  <div class="palette-backdrop"></div>
+  <div class="palette-container">
+    <div class="palette-input-row">
+      <span class="palette-path">~/justin.software</span>
+      <span class="palette-prompt">$</span>
+      <span class="palette-prefix">cd </span>
+      <input
+        id="palette-input"
+        class="palette-input"
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+      />
+    </div>
+    <div id="palette-completions" class="palette-completions"></div>
+    <div class="palette-hint">
+      tab complete · enter navigate · esc close
+    </div>
+  </div>
+</div>
+
+<script define:vars={{ routes }}>
+  const palette = document.getElementById('shell-palette');
+  const input = document.getElementById('palette-input');
+  const completionsEl = document.getElementById('palette-completions');
+  let isOpen = false;
+  let activeIndex = 0;
+  let filtered = [];
+
+  function open() {
+    isOpen = true;
+    palette.setAttribute('aria-hidden', 'false');
+    input.value = '';
+    activeIndex = 0;
+    updateCompletions('');
+    input.focus();
+  }
+
+  function close() {
+    isOpen = false;
+    palette.setAttribute('aria-hidden', 'true');
+    input.value = '';
+    input.blur();
+  }
+
+  function navigate(path) {
+    close();
+    window.location.href = path;
+  }
+
+  function fuzzyMatch(query, label) {
+    if (!query) return true;
+    const q = query.toLowerCase();
+    const l = label.toLowerCase();
+    let qi = 0;
+    for (let li = 0; li < l.length && qi < q.length; li++) {
+      if (l[li] === q[qi]) qi++;
+    }
+    return qi === q.length;
+  }
+
+  function updateCompletions(query) {
+    filtered = routes.filter(r => fuzzyMatch(query, r.label));
+    activeIndex = Math.min(activeIndex, Math.max(0, filtered.length - 1));
+
+    completionsEl.innerHTML = filtered.map((r, i) => {
+      const isActive = i === activeIndex;
+      const display = r.type === 'page' ? r.label + '/' : r.label;
+      const pathDisplay = r.path === '/' ? '~' : r.path;
+      return `<div class="completion${isActive ? ' active' : ''}" data-index="${i}" data-path="${r.path}">
+        <span class="completion-label">${display}</span>
+        <span class="completion-path">${pathDisplay}</span>
+      </div>`;
+    }).join('');
+  }
+
+  input?.addEventListener('input', () => {
+    activeIndex = 0;
+    updateCompletions(input.value);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      isOpen ? close() : open();
+      return;
+    }
+
+    if (!isOpen) return;
+
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      close();
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      if (filtered.length > 0) {
+        activeIndex = (activeIndex + (e.shiftKey ? -1 : 1) + filtered.length) % filtered.length;
+        updateCompletions(input.value);
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (filtered.length > 0) {
+        activeIndex = (activeIndex + 1) % filtered.length;
+        updateCompletions(input.value);
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (filtered.length > 0) {
+        activeIndex = (activeIndex - 1 + filtered.length) % filtered.length;
+        updateCompletions(input.value);
+      }
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (filtered[activeIndex]) {
+        navigate(filtered[activeIndex].path);
+      }
+    }
+  });
+
+  completionsEl?.addEventListener('click', (e) => {
+    const item = e.target.closest('.completion');
+    if (item) {
+      navigate(item.dataset.path);
+    }
+  });
+
+  palette?.querySelector('.palette-backdrop')?.addEventListener('click', close);
+
+  document.addEventListener('astro:page-load', () => {
+    isOpen = false;
+    palette?.setAttribute('aria-hidden', 'true');
+  });
+</script>
+
+<style>
+  .palette-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    transition: opacity 0.15s, visibility 0.15s;
+  }
+
+  .palette-overlay[aria-hidden='true'] {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .palette-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+  }
+
+  .palette-container {
+    position: relative;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    transform: translateY(0);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .palette-overlay[aria-hidden='true'] .palette-container {
+    transform: translateY(100%);
+  }
+
+  .palette-input-row {
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+
+  .palette-path {
+    color: var(--text-muted);
+  }
+
+  .palette-prompt {
+    color: var(--text-secondary);
+  }
+
+  .palette-prefix {
+    color: var(--text-link);
+  }
+
+  .palette-input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text-link);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    caret-color: var(--text-secondary);
+  }
+
+  .palette-completions {
+    padding: 8px 20px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    max-height: 240px;
+    overflow-y: auto;
+  }
+
+  .completion {
+    padding: 6px 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+
+  .completion.active {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .completion:hover {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .completion-label {
+    color: var(--text-link);
+  }
+
+  .completion.active .completion-label {
+    color: var(--text);
+  }
+
+  .completion-path {
+    color: var(--text-tertiary);
+    font-size: 11px;
+  }
+
+  .palette-hint {
+    padding: 6px 20px 10px;
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: var(--text-tertiary);
+    border-top: 1px solid var(--border);
+  }
+</style>
