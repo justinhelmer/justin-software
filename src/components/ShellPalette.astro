@@ -23,21 +23,23 @@ const siteData = {
   <div class="palette-backdrop"></div>
   <div class="palette-container">
     <div class="palette-input-row">
-      <span class="palette-prompt">~/justin.software <span class="prompt-dollar">$</span></span>
+      <span class="prompt">
+        <span class="prompt-dir">~/justin.software</span>
+        <span class="prompt-arrow">❯</span>
+      </span>
       <input
         id="palette-input"
         class="palette-input"
         type="text"
         autocomplete="off"
         spellcheck="false"
-        autofocus
       />
     </div>
     <div id="palette-completions" class="palette-completions"></div>
     <div class="palette-hint">
       <span><kbd>tab</kbd> complete</span>
       <span><kbd>↑↓</kbd> select</span>
-      <span><kbd>↵</kbd> execute</span>
+      <span><kbd>↵</kbd> run</span>
       <span><kbd>esc</kbd> close</span>
     </div>
   </div>
@@ -118,13 +120,11 @@ const siteData = {
         name: 'ls',
         describe: () => 'List pages or posts',
         complete(args: string): Completion[] {
-          const sections = [
-            { label: 'pages', detail: 'List all pages', value: 'ls pages', kind: 'command' as const },
-            { label: 'posts', detail: 'List all posts', value: 'ls posts', kind: 'command' as const },
+          const sections: Completion[] = [
+            { label: 'pages', detail: 'List all pages', value: 'ls pages', kind: 'command', action: () => setInput('ls pages') },
+            { label: 'posts', detail: 'List all posts', value: 'ls posts', kind: 'command', action: () => setInput('ls posts') },
           ];
-          return sections
-            .filter(s => fuzzy(args, s.label))
-            .map(s => ({ ...s, action: () => setInput(s.value) }));
+          return sections.filter(s => fuzzy(args, s.label));
         },
         execute(args: string) {
           if (args.trim().toLowerCase() === 'posts') nav('/writing');
@@ -171,24 +171,18 @@ const siteData = {
       const { cmd, args } = parseInput(raw);
       const hasSpace = raw.includes(' ');
 
-      // No input — show commands only (clean initial state)
       if (!raw.trim()) {
         return commands.map(c => ({
-          label: c.name,
-          detail: c.describe(),
-          kind: 'command' as const,
-          value: c.name + ' ',
-          action: () => setInput(c.name + ' '),
+          label: c.name, detail: c.describe(), kind: 'command' as const,
+          value: c.name + ' ', action: () => setInput(c.name + ' '),
         }));
       }
 
-      // Has a space — command is locked, delegate to its completer
       if (hasSpace) {
         const command = commands.find(c => c.name === cmd);
         if (command) return command.complete(args);
       }
 
-      // No space — fuzzy match commands + routes simultaneously
       const matchingCmds: Completion[] = commands
         .filter(c => fuzzy(cmd, c.name))
         .map(c => ({
@@ -202,8 +196,7 @@ const siteData = {
           label: r.type === 'page' ? r.label + '/' : r.label,
           detail: r.path === '/' ? '~' : r.path,
           kind: (r.type === 'page' ? 'page' : 'post') as 'page' | 'post',
-          value: `cd ${r.path}`,
-          action: () => nav(r.path),
+          value: `cd ${r.path}`, action: () => nav(r.path),
         }));
 
       const results = [...matchingCmds, ...matchingRoutes];
@@ -221,40 +214,47 @@ const siteData = {
       render();
     }
 
-    // ── Rendering ─────────────────────────────────────────────────────
-
-    function kindIcon(kind: string): string {
+    function kindColor(kind: string): string {
       switch (kind) {
-        case 'command': return '<span class="kind-icon kind-cmd">$</span>';
-        case 'page':    return '<span class="kind-icon kind-page">~</span>';
-        case 'post':    return '<span class="kind-icon kind-post">✎</span>';
+        case 'command': return '#bd93f9';  // purple
+        case 'page':    return '#50fa7b';  // green
+        case 'post':    return '#f1fa8c';  // yellow
+        default:        return '#6272a4';
+      }
+    }
+
+    function kindPrefix(kind: string): string {
+      switch (kind) {
+        case 'command': return '$';
+        case 'page':    return '~/';
+        case 'post':    return '📝';
         default:        return '';
       }
     }
 
     function render() {
-      // Group by kind for visual separation
       let html = '';
       let lastKind = '';
 
       completions.forEach((c, i) => {
+        // Section divider between kinds
         if (c.kind !== lastKind && lastKind !== '') {
-          html += '<div class="completion-divider"></div>';
+          html += '<div class="c-divider"></div>';
         }
         lastKind = c.kind;
 
         const active = i === activeIndex;
-        html += `<div class="completion${active ? ' active' : ''}" data-index="${i}">
-          ${kindIcon(c.kind)}
-          <span class="completion-label">${c.label}</span>
-          <span class="completion-detail">${c.detail}</span>
-        </div>`;
+        const color = kindColor(c.kind);
+
+        html += `<div class="c-row${active ? ' c-active' : ''}" data-index="${i}">`;
+        html +=   `<span class="c-prefix" style="color:${color}">${kindPrefix(c.kind)}</span>`;
+        html +=   `<span class="c-label">${c.label}</span>`;
+        html +=   `<span class="c-detail">${c.detail}</span>`;
+        html += `</div>`;
       });
 
       completionsEl.innerHTML = html;
-
-      // Scroll active into view
-      const activeEl = completionsEl.querySelector('.completion.active');
+      const activeEl = completionsEl.querySelector('.c-active');
       if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });
     }
 
@@ -265,30 +265,23 @@ const siteData = {
     }
 
     function execute() {
-      const raw = input.value.trim();
       if (completions[activeIndex]) {
         completions[activeIndex].action();
         return;
       }
-      const { cmd, args } = parseInput(raw);
+      const { cmd, args } = parseInput(input.value.trim());
       const command = commands.find(c => c.name === cmd);
       if (command) command.execute(args);
-      else commands[0].execute(raw);
+      else commands[0].execute(input.value.trim());
     }
-
-    // ── UI ─────────────────────────────────────────────────────────────
 
     function open() {
       isOpen = true;
       palette.setAttribute('aria-hidden', 'false');
       input.value = '';
       onInput();
-      // Double rAF ensures the visibility transition has started before focus
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          input.focus({ preventScroll: true });
-        });
-      });
+      // setTimeout is more reliable than rAF for focus after visibility transition
+      setTimeout(() => input.focus({ preventScroll: true }), 50);
     }
 
     function close() {
@@ -314,10 +307,7 @@ const siteData = {
         close();
       } else if (e.key === 'Tab') {
         e.preventDefault();
-        if (completions.length > 0) {
-          const c = completions[activeIndex];
-          if (c) setInput(c.value);
-        }
+        if (completions[activeIndex]) setInput(completions[activeIndex].value);
       } else if (e.key === 'ArrowDown') {
         e.preventDefault();
         if (completions.length > 0) {
@@ -337,7 +327,7 @@ const siteData = {
     });
 
     completionsEl.addEventListener('click', (e) => {
-      const item = (e.target as HTMLElement).closest('.completion') as HTMLElement | null;
+      const item = (e.target as HTMLElement).closest('.c-row') as HTMLElement | null;
       if (item?.dataset.index) {
         const idx = parseInt(item.dataset.index);
         if (completions[idx]) completions[idx].action();
@@ -352,6 +342,7 @@ const siteData = {
 </script>
 
 <style>
+  /* ── Overlay ─────────────────────────────────────────────────── */
   .palette-overlay {
     position: fixed;
     inset: 0;
@@ -361,177 +352,158 @@ const siteData = {
     justify-content: flex-end;
     transition: opacity 0.15s, visibility 0.15s;
   }
-
   .palette-overlay[aria-hidden='true'] {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
   }
-
   .palette-backdrop {
     position: absolute;
     inset: 0;
     background: rgba(0, 0, 0, 0.7);
   }
-
   .palette-container {
     position: relative;
-    background: var(--surface);
-    border-top: 1px solid var(--border);
+    background: #1a1b26;
+    border-top: 1px solid #292d3e;
     transform: translateY(0);
     transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
-
   .palette-overlay[aria-hidden='true'] .palette-container {
     transform: translateY(100%);
   }
 
+  /* ── Prompt row (Powerlevel10k style) ────────────────────────── */
   .palette-input-row {
     padding: 14px 20px;
     display: flex;
     align-items: center;
-    gap: 10px;
-    border-bottom: 1px solid var(--border);
+    gap: 0;
+    border-bottom: 1px solid #292d3e;
     font-family: var(--font-mono);
-    font-size: 13px;
+    font-size: 14px;
   }
-
-  .palette-prompt {
-    color: var(--text-tertiary);
+  .prompt {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-right: 10px;
     white-space: nowrap;
   }
-
-  .prompt-dollar {
-    color: var(--text-secondary);
+  .prompt-dir {
+    color: #82aaff;
+    font-weight: 500;
   }
-
+  .prompt-arrow {
+    color: #c792ea;
+    margin-left: 8px;
+    font-weight: 700;
+  }
   .palette-input {
     flex: 1;
     background: none;
     border: none;
     outline: none;
-    color: var(--text);
+    color: #eeffff;
     font-family: var(--font-mono);
-    font-size: 13px;
-    caret-color: var(--text-secondary);
+    font-size: 14px;
+    caret-color: #c792ea;
   }
-
-  .palette-input::placeholder {
-    color: var(--text-tertiary);
-  }
-
   .palette-input.shake {
     animation: shake 0.3s ease;
   }
-
   @keyframes shake {
     0%, 100% { transform: translateX(0); }
     25% { transform: translateX(-4px); }
     75% { transform: translateX(4px); }
   }
 
-  /* Fixed height completions area — no layout shift */
+  /* ── Completions (fixed height) ──────────────────────────────── */
   .palette-completions {
-    padding: 6px 12px;
-    font-family: var(--font-mono);
-    font-size: 13px;
     height: 240px;
     overflow-y: auto;
+    padding: 8px 8px;
+    font-family: var(--font-mono);
+    font-size: 13px;
   }
 
-  .completion-divider {
+  .c-divider {
     height: 1px;
-    background: var(--border);
-    margin: 4px 8px;
+    background: #292d3e;
+    margin: 4px 10px;
   }
 
-  .completion {
-    padding: 7px 10px;
+  .c-row {
     display: flex;
     align-items: center;
-    border-radius: 4px;
-    cursor: pointer;
     gap: 10px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: background 0.1s;
   }
 
-  .completion.active {
-    background: rgba(255, 255, 255, 0.06);
+  .c-row:hover:not(.c-active) {
+    background: rgba(255, 255, 255, 0.03);
   }
 
-  .completion:hover:not(.active) {
-    background: rgba(255, 255, 255, 0.025);
+  /* ── Active highlight — unmistakable ─────────────────────────── */
+  .c-active {
+    background: rgba(130, 170, 255, 0.1);
+    border-left-color: #82aaff;
+  }
+  .c-active .c-label {
+    color: #eeffff;
+  }
+  .c-active .c-detail {
+    color: #676e95;
   }
 
-  /* Kind icons — colored badges like ohmyzsh */
-  .kind-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-    height: 20px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: 600;
+  .c-prefix {
+    font-weight: 700;
+    font-size: 12px;
+    width: 24px;
+    text-align: center;
     flex-shrink: 0;
   }
 
-  .kind-cmd {
-    background: rgba(136, 192, 208, 0.15);
-    color: #88c0d0;
-  }
-
-  .kind-page {
-    background: rgba(163, 190, 140, 0.15);
-    color: #a3be8c;
-  }
-
-  .kind-post {
-    background: rgba(235, 203, 139, 0.15);
-    color: #ebcb8b;
-  }
-
-  .completion-label {
-    color: var(--text-link);
+  .c-label {
+    color: #a6accd;
     flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .completion.active .completion-label {
-    color: var(--text);
-  }
-
-  .completion-detail {
-    color: var(--text-tertiary);
+  .c-detail {
+    color: #4a5178;
     font-size: 11px;
     flex-shrink: 0;
     text-align: right;
   }
 
+  /* ── Hint bar ────────────────────────────────────────────────── */
   .palette-hint {
     padding: 8px 20px;
     font-size: 10px;
     font-family: var(--font-mono);
-    color: var(--text-tertiary);
-    border-top: 1px solid var(--border);
+    color: #4a5178;
+    border-top: 1px solid #292d3e;
     display: flex;
     gap: 16px;
   }
-
   .palette-hint kbd {
-    color: var(--text-muted);
+    color: #676e95;
     background: rgba(255, 255, 255, 0.04);
-    padding: 1px 4px;
+    padding: 1px 5px;
     border-radius: 3px;
-    border: 1px solid var(--border);
+    border: 1px solid #292d3e;
     font-size: 10px;
     margin-right: 3px;
   }
 
   @media (max-width: 640px) {
-    .palette-completions {
-      height: 200px;
-    }
+    .palette-completions { height: 200px; }
   }
 </style>
