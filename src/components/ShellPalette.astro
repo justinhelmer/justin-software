@@ -126,20 +126,42 @@ const siteData = {
         name: 'ls',
         describe: () => 'List pages or posts',
         complete(args: string): Completion[] {
-          const sections: Completion[] = [
-            { label: 'pages', detail: 'Show all pages', value: 'ls pages', kind: 'command', action: () => setInput('ls pages') },
-            { label: 'posts', detail: 'Show all posts', value: 'ls posts', kind: 'command', action: () => setInput('ls posts') },
-          ];
-          if (!args) return sections;
-          return sections.filter(s => prefixMatch(args, s.label));
+          if (!args) {
+            return [
+              { label: 'pages', detail: 'Show all pages', value: 'ls pages', kind: 'command', action: () => { input.value = 'ls pages'; execute(); } },
+              { label: 'posts', detail: 'Show all posts', value: 'ls posts', kind: 'command', action: () => { input.value = 'ls posts'; execute(); } },
+            ];
+          }
+          if (prefixMatch(args, 'pages')) {
+            return routes.filter((r: any) => r.type === 'page').map((r: any) => ({
+              label: r.label, detail: r.path, kind: 'page' as const,
+              value: `cd ${r.path}`, action: () => nav(r.path),
+            }));
+          }
+          if (prefixMatch(args, 'posts')) {
+            return routes.filter((r: any) => r.type === 'post').map((r: any) => ({
+              label: r.label, detail: r.path, kind: 'post' as const,
+              value: `cd ${r.path}`, action: () => nav(r.path),
+            }));
+          }
+          return [];
         },
         execute(args: string) {
-          if (args.trim().toLowerCase() === 'posts') nav('/writing');
-          else {
+          const target = args.trim().toLowerCase();
+          if (target === 'posts') {
+            // Show posts inline as completions
+            showCompletions(routes.filter((r: any) => r.type === 'post').map((r: any) => ({
+              label: r.label, detail: r.path, kind: 'post' as const,
+              value: `cd ${r.path}`, action: () => nav(r.path),
+            })));
+            input.value = '';
+          } else {
+            // Show pages inline as completions (default)
             showCompletions(routes.filter((r: any) => r.type === 'page').map((r: any) => ({
               label: r.label, detail: r.path, kind: 'page' as const,
               value: `cd ${r.path}`, action: () => nav(r.path),
             })));
+            input.value = '';
           }
         },
       },

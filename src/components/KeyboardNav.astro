@@ -2,6 +2,9 @@
 ---
 
 <script>
+  // Page order matches the nav: home → about → writing → links
+  const PAGE_ORDER = ['/', '/about', '/writing', '/links'];
+
   function isInputFocused(): boolean {
     const el = document.activeElement;
     return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
@@ -32,20 +35,79 @@
     items.forEach(el => el.removeAttribute('data-selected'));
   }
 
+  // Find which top-level page we're on (normalizes /writing/slug → /writing)
+  function getCurrentPageIndex(): number {
+    const path = window.location.pathname;
+    // Exact match first
+    const exact = PAGE_ORDER.indexOf(path);
+    if (exact !== -1) return exact;
+    // Prefix match (e.g. /writing/hello-world → /writing)
+    for (let i = PAGE_ORDER.length - 1; i >= 0; i--) {
+      if (path.startsWith(PAGE_ORDER[i]) && PAGE_ORDER[i] !== '/') return i;
+    }
+    return 0;
+  }
+
+  function navigateToPage(index: number) {
+    const target = PAGE_ORDER[index];
+    if (!target || target === window.location.pathname) return;
+
+    const currentIndex = getCurrentPageIndex();
+    const direction = index > currentIndex ? 'forward' : 'back';
+
+    // Store direction for the transition animation
+    document.documentElement.dataset.navDirection = direction;
+
+    // Use Astro's navigate if available (view transitions), else pushState
+    const astroNav = (window as any).navigation;
+    window.location.href = target;
+  }
+
   document.addEventListener('keydown', (e) => {
     if (isInputFocused() || isPaletteOpen()) return;
 
     const items = getListItems();
     const current = getSelectedIndex(items);
 
-    // Arrow down — select next item
+    // Arrow Right — next page in nav order
+    if (e.key === 'ArrowRight' && items.length === 0) {
+      e.preventDefault();
+      const idx = getCurrentPageIndex();
+      if (idx < PAGE_ORDER.length - 1) navigateToPage(idx + 1);
+      return;
+    }
+
+    // Arrow Left — previous page in nav order
+    if (e.key === 'ArrowLeft' && items.length === 0) {
+      e.preventDefault();
+      const idx = getCurrentPageIndex();
+      if (idx > 0) navigateToPage(idx - 1);
+      return;
+    }
+
+    // On pages with lists, left/right still navigate pages (when nothing selected)
+    if (e.key === 'ArrowRight' && current < 0) {
+      e.preventDefault();
+      const idx = getCurrentPageIndex();
+      if (idx < PAGE_ORDER.length - 1) navigateToPage(idx + 1);
+      return;
+    }
+
+    if (e.key === 'ArrowLeft' && current < 0) {
+      e.preventDefault();
+      const idx = getCurrentPageIndex();
+      if (idx > 0) navigateToPage(idx - 1);
+      return;
+    }
+
+    // Arrow down — select next list item
     if (e.key === 'ArrowDown' && items.length > 0) {
       e.preventDefault();
       select(items, current < items.length - 1 ? current + 1 : 0);
       return;
     }
 
-    // Arrow up — select previous item
+    // Arrow up — select previous list item
     if (e.key === 'ArrowUp' && items.length > 0) {
       e.preventDefault();
       select(items, current > 0 ? current - 1 : items.length - 1);
@@ -59,7 +121,7 @@
       return;
     }
 
-    // Escape — clear selection
+    // Escape — clear selection (then arrows go back to page nav)
     if (e.key === 'Escape') {
       clearSelection(items);
       return;
