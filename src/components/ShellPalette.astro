@@ -46,10 +46,31 @@ const siteData = {
 </div>
 
 <script>
+  interface Completion {
+    label: string;
+    detail: string;
+    kind: 'command' | 'page' | 'post';
+    value: string;
+    action: () => void;
+  }
+
+  interface Command {
+    name: string;
+    describe: () => string;
+    complete: (args: string) => Completion[];
+    execute: (args: string) => void;
+  }
+
+  interface Route {
+    path: string;
+    label: string;
+    type: 'page' | 'post';
+  }
+
   function initShell() {
     const dataEl = document.getElementById('shell-data');
     if (!dataEl) return;
-    const { routes } = JSON.parse(dataEl.textContent || '{}');
+    const routes: Route[] = JSON.parse(dataEl.textContent || '[]').routes;
 
     const palette = document.getElementById('shell-palette');
     const input = document.getElementById('palette-input') as HTMLInputElement | null;
@@ -58,23 +79,9 @@ const siteData = {
 
     let isOpen = false;
     let activeIndex = 0;
-
-    interface Completion {
-      label: string;
-      detail: string;
-      kind: 'command' | 'page' | 'post';
-      value: string;
-      action: () => void;
-    }
-
     let completions: Completion[] = [];
 
-    interface Command {
-      name: string;
-      describe: () => string;
-      complete: (args: string) => Completion[];
-      execute: (args: string) => void;
-    }
+    const astroNavigate = (window as any).__astro_navigate as ((path: string) => void) | undefined;
 
     function fuzzy(query: string, text: string): boolean {
       if (!query) return true;
@@ -87,16 +94,9 @@ const siteData = {
       return qi === q.length;
     }
 
-    // Stricter match: query must be a prefix of text
-    function prefixMatch(query: string, text: string): boolean {
-      if (!query) return true;
-      return text.toLowerCase().startsWith(query.toLowerCase());
-    }
-
     function nav(path: string) {
       close();
-      const astroNav = (window as any).__astro_navigate;
-      if (astroNav) astroNav(path);
+      if (astroNavigate) astroNavigate(path);
       else window.location.href = path;
     }
 
@@ -106,8 +106,8 @@ const siteData = {
         describe: () => 'Navigate to a page or post',
         complete(args: string): Completion[] {
           return routes
-            .filter((r: any) => fuzzy(args, r.label) || fuzzy(args, r.path))
-            .map((r: any) => ({
+            .filter(r => fuzzy(args, r.label) || fuzzy(args, r.path))
+            .map(r => ({
               label: r.label,
               detail: r.path,
               kind: r.type === 'page' ? 'page' : 'post',
@@ -116,9 +116,9 @@ const siteData = {
             }));
         },
         execute(args: string) {
-          const exact = routes.find((r: any) => r.path === args || r.label === args.toLowerCase());
+          const exact = routes.find(r => r.path === args || r.label === args.toLowerCase());
           if (exact) return nav(exact.path);
-          const matches = routes.filter((r: any) => fuzzy(args, r.label) || fuzzy(args, r.path));
+          const matches = routes.filter(r => fuzzy(args, r.label) || fuzzy(args, r.path));
           if (matches.length === 1) return nav(matches[0].path);
           input.classList.add('shake');
           setTimeout(() => input.classList.remove('shake'), 300);
@@ -128,10 +128,10 @@ const siteData = {
         name: 'ls',
         describe: () => 'List posts',
         complete(args: string): Completion[] {
-          const posts = routes.filter((r: any) => r.type === 'post');
+          const posts = routes.filter(r => r.type === 'post');
           return posts
-            .filter((r: any) => !args || fuzzy(args, r.path.split('/').pop() || ''))
-            .map((r: any) => {
+            .filter(r => !args || fuzzy(args, r.path.split('/').pop() || ''))
+            .map(r => {
               const slug = r.path.split('/').pop() || r.path;
               return {
                 label: slug,
@@ -143,8 +143,8 @@ const siteData = {
             });
         },
         execute() {
-          const posts = routes.filter((r: any) => r.type === 'post');
-          showCompletions(posts.map((r: any) => {
+          const posts = routes.filter(r => r.type === 'post');
+          completions = posts.map(r => {
             const slug = r.path.split('/').pop() || r.path;
             return {
               label: slug,
@@ -153,7 +153,9 @@ const siteData = {
               value: `cd ${r.path}`,
               action: () => nav(r.path),
             };
-          }));
+          });
+          activeIndex = 0;
+          render();
           input.value = '';
         },
       },
@@ -167,10 +169,12 @@ const siteData = {
           }));
         },
         execute() {
-          showCompletions(commands.map(c => ({
+          completions = commands.map(c => ({
             label: c.name, detail: c.describe(), kind: 'command' as const,
             value: c.name + ' ', action: () => setInput(c.name + ' '),
-          })));
+          }));
+          activeIndex = 0;
+          render();
         },
       },
     ];
@@ -206,18 +210,17 @@ const siteData = {
         if (command) return command.complete(args);
       }
 
-      // No space — match command names with prefix (not fuzzy)
-      // and routes with prefix match only (to avoid ls → links)
+      // No space — match command names and routes with prefix
       const matchingCmds: Completion[] = commands
-        .filter(c => prefixMatch(cmd, c.name))
+        .filter(c => c.name.startsWith(cmd.toLowerCase()))
         .map(c => ({
           label: c.name, detail: c.describe(), kind: 'command' as const,
           value: c.name + ' ', action: () => setInput(c.name + ' '),
         }));
 
       const matchingRoutes: Completion[] = routes
-        .filter((r: any) => prefixMatch(cmd, r.label))
-        .map((r: any) => ({
+        .filter(r => r.label.startsWith(cmd.toLowerCase()))
+        .map(r => ({
           label: r.label, detail: r.path,
           kind: (r.type === 'page' ? 'page' : 'post') as 'page' | 'post',
           value: `cd ${r.path}`, action: () => nav(r.path),
@@ -226,26 +229,10 @@ const siteData = {
       const results = [...matchingCmds, ...matchingRoutes];
       if (results.length > 0) return results;
 
-      // Fall back to fuzzy on routes if prefix found nothing
-      const fuzzyRoutes: Completion[] = routes
-        .filter((r: any) => fuzzy(cmd, r.label))
-        .map((r: any) => ({
-          label: r.label, detail: r.path,
-          kind: (r.type === 'page' ? 'page' : 'post') as 'page' | 'post',
-          value: `cd ${r.path}`, action: () => nav(r.path),
-        }));
-      if (fuzzyRoutes.length > 0) return fuzzyRoutes;
-
       return [{
         label: 'no matches', detail: 'try help', kind: 'command' as const,
         value: 'help', action: () => setInput('help'),
       }];
-    }
-
-    function showCompletions(items: Completion[]) {
-      completions = items;
-      activeIndex = 0;
-      render();
     }
 
     function render() {
@@ -358,6 +345,22 @@ const siteData = {
 </script>
 
 <style is:global>
+  /* Palette theme (Tokyo Night) */
+  :root {
+    --pal-bg: #1a1b26;
+    --pal-border: #292d3e;
+    --pal-text: #eeffff;
+    --pal-text-dim: #a6accd;
+    --pal-text-muted: #676e95;
+    --pal-text-faint: #4a5178;
+    --pal-accent: #82aaff;
+    --pal-purple: #c792ea;
+    --pal-green: #50fa7b;
+    --pal-yellow: #f1fa8c;
+    --pal-active-bg: rgba(130, 170, 255, 0.12);
+    --pal-hover-bg: rgba(255, 255, 255, 0.03);
+  }
+
   /* ── Overlay ─────────────────────────────────────────────────── */
   .palette-overlay {
     position: fixed;
@@ -380,8 +383,8 @@ const siteData = {
   }
   .palette-container {
     position: relative;
-    background: #1a1b26;
-    border-top: 1px solid #292d3e;
+    background: var(--pal-bg);
+    border-top: 1px solid var(--pal-border);
     transform: translateY(0);
     transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
@@ -395,7 +398,7 @@ const siteData = {
     display: flex;
     align-items: center;
     gap: 0;
-    border-bottom: 1px solid #292d3e;
+    border-bottom: 1px solid var(--pal-border);
     font-family: var(--font-mono);
     font-size: 14px;
   }
@@ -406,11 +409,11 @@ const siteData = {
     white-space: nowrap;
   }
   .prompt-dir {
-    color: #82aaff;
+    color: var(--pal-accent);
     font-weight: 500;
   }
   .prompt-arrow {
-    color: #c792ea;
+    color: var(--pal-purple);
     margin-left: 10px;
     font-weight: 700;
     font-size: 16px;
@@ -420,10 +423,10 @@ const siteData = {
     background: none;
     border: none;
     outline: none;
-    color: #eeffff;
+    color: var(--pal-text);
     font-family: var(--font-mono);
     font-size: 14px;
-    caret-color: #c792ea;
+    caret-color: var(--pal-purple);
   }
   .palette-input.shake {
     animation: palette-shake 0.3s ease;
@@ -445,7 +448,7 @@ const siteData = {
 
   .sh-divider {
     height: 1px;
-    background: #292d3e;
+    background: var(--pal-border);
     margin: 6px 12px;
   }
 
@@ -462,12 +465,12 @@ const siteData = {
   }
 
   .sh-row:hover:not(.sh-active) {
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--pal-hover-bg);
   }
 
   .sh-active {
-    background: rgba(130, 170, 255, 0.12);
-    border-left-color: #82aaff;
+    background: var(--pal-active-bg);
+    border-left-color: var(--pal-accent);
   }
 
   /* Colored dot indicators */
@@ -477,12 +480,12 @@ const siteData = {
     border-radius: 50%;
     flex-shrink: 0;
   }
-  .sh-dot-cmd  { background: #c792ea; } /* purple */
-  .sh-dot-page { background: #50fa7b; } /* green */
-  .sh-dot-post { background: #f1fa8c; } /* yellow */
+  .sh-dot-cmd  { background: var(--pal-purple); } /* purple */
+  .sh-dot-page { background: var(--pal-green); }  /* green */
+  .sh-dot-post { background: var(--pal-yellow); } /* yellow */
 
   .sh-label {
-    color: #a6accd;
+    color: var(--pal-text-dim);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -490,19 +493,19 @@ const siteData = {
   }
 
   .sh-active .sh-label {
-    color: #eeffff;
+    color: var(--pal-text);
     font-weight: 500;
   }
 
   .sh-detail {
-    color: #4a5178;
+    color: var(--pal-text-faint);
     font-size: 11px;
     white-space: nowrap;
     text-align: right;
   }
 
   .sh-active .sh-detail {
-    color: #676e95;
+    color: var(--pal-text-muted);
   }
 
   /* ── Hint bar ────────────────────────────────────────────────── */
@@ -510,17 +513,17 @@ const siteData = {
     padding: 8px 20px;
     font-size: 10px;
     font-family: var(--font-mono);
-    color: #4a5178;
-    border-top: 1px solid #292d3e;
+    color: var(--pal-text-faint);
+    border-top: 1px solid var(--pal-border);
     display: flex;
     gap: 16px;
   }
   .palette-hint kbd {
-    color: #676e95;
+    color: var(--pal-text-muted);
     background: rgba(255, 255, 255, 0.04);
     padding: 1px 5px;
     border-radius: 3px;
-    border: 1px solid #292d3e;
+    border: 1px solid var(--pal-border);
     font-size: 10px;
     margin-right: 3px;
   }
