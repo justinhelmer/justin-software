@@ -53,8 +53,9 @@
     return 0;
   }
 
-  function navigate(path: string) {
+  function navigateTo(path: string, direction?: 'forward' | 'back') {
     if (norm(window.location.pathname) === norm(path)) return;
+    if (direction) document.documentElement.dataset.navDirection = direction;
     const nav = (window as any).__astro_navigate;
     if (nav) nav(path);
     else window.location.href = path;
@@ -98,14 +99,14 @@
       case 'ArrowRight':
         if (idx < pages.length - 1) {
           e.preventDefault();
-          navigate(pages[idx + 1]);
+          navigateTo(pages[idx + 1], 'forward');
         }
         break;
 
       case 'ArrowLeft':
         if (idx > 0) {
           e.preventDefault();
-          navigate(pages[idx - 1]);
+          navigateTo(pages[idx - 1], 'back');
         }
         break;
 
@@ -139,7 +140,7 @@
         const parentPage = pages[idx];
         if (parentPage && norm(window.location.pathname) !== norm(parentPage)) {
           e.preventDefault();
-          navigate(parentPage);
+          navigateTo(parentPage, 'back');
         }
         break;
       }
