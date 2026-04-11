@@ -166,6 +166,19 @@ a:hover {
   border-radius: 4px;
 }
 
+/* Page heading — shared across about, writing, links.
+   padding-top matches the subtitle height on the homepage
+   so headings sit at the same vertical position across pages. */
+.page-heading {
+  font-size: 44px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.05;
+  letter-spacing: -2px;
+  padding-top: 33px;
+  margin-bottom: 48px;
+}
+
 /* Keyboard navigation selection */
 [data-nav-selected] {
   background: rgba(255, 255, 255, 0.04) !important;

@@ -1,45 +1,66 @@
 ---
 /**
- * Keyboard navigation controller.
+ * Keyboard navigation — driven by the actual nav links in the DOM.
  *
- *   ← / →     pages (home → about → writing → links)
- *   ↑ / ↓     items within the current page
+ * Instead of a hardcoded PAGE_ORDER, this reads the nav links from
+ * the header and uses them as the navigation structure. The DOM is
+ * the source of truth — if a link is in the nav, it's navigable.
+ *
+ *   ← / →     traverse nav links (page-level)
+ *   ↑ / ↓     select items within the current page
  *   Enter      open selected item
  *   Escape     clear selection
  *   Backspace  go back to parent page
- *
- * Pages mark navigable items with `data-nav-item` on <a> elements.
- * Selection is indicated by `data-nav-selected` (styled in global.css).
  */
 ---
 
 <script>
-  const PAGE_ORDER = ['/', '/about', '/writing', '/links'];
-
   function blocked(): boolean {
     const active = document.activeElement;
-    const inputFocused = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement;
-    const paletteOpen = document.getElementById('shell-palette')?.getAttribute('aria-hidden') === 'false';
-    const helpOpen = document.getElementById('help-overlay')?.getAttribute('aria-hidden') === 'false';
-    return inputFocused || paletteOpen || helpOpen;
+    if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) return true;
+    if (document.getElementById('shell-palette')?.getAttribute('aria-hidden') === 'false') return true;
+    if (document.getElementById('help-overlay')?.getAttribute('aria-hidden') === 'false') return true;
+    return false;
   }
 
-  function pageIndex(path: string): number {
-    const exact = PAGE_ORDER.indexOf(path);
+  /** Read the navigation structure from the actual nav links in the DOM. */
+  function getNavPages(): string[] {
+    const links = document.querySelectorAll('header nav a[href]');
+    // Home (/) is always the implicit first — it's the mark link, not in nav
+    const pages = ['/'];
+    links.forEach(a => {
+      const href = (a as HTMLAnchorElement).getAttribute('href');
+      if (href && !pages.includes(href)) pages.push(href);
+    });
+    return pages;
+  }
+
+  /** Normalize path by stripping trailing slash (except root). */
+  function norm(path: string): string {
+    if (path === '/') return path;
+    return path.replace(/\/$/, '');
+  }
+
+  /** Find current page index in nav order. Handles sub-pages. */
+  function currentIndex(pages: string[]): number {
+    const path = norm(window.location.pathname);
+    const exact = pages.indexOf(path);
     if (exact !== -1) return exact;
-    for (let i = PAGE_ORDER.length - 1; i >= 0; i--) {
-      if (path.startsWith(PAGE_ORDER[i]) && PAGE_ORDER[i] !== '/') return i;
+    // Sub-page: /writing/hello-world → /writing
+    for (let i = pages.length - 1; i >= 0; i--) {
+      if (path.startsWith(pages[i]) && pages[i] !== '/') return i;
     }
     return 0;
   }
 
-  function goToPage(index: number) {
-    const target = PAGE_ORDER[index];
-    if (!target) return;
+  function navigate(path: string) {
+    if (norm(window.location.pathname) === norm(path)) return;
     const nav = (window as any).__astro_navigate;
-    if (nav) nav(target);
-    else window.location.href = target;
+    if (nav) nav(path);
+    else window.location.href = path;
   }
+
+  // ── Item selection ────────────────────────────────────────────
 
   function items(): HTMLAnchorElement[] {
     return Array.from(document.querySelectorAll('[data-nav-item]'));
@@ -58,25 +79,34 @@
   }
 
   function clearSelection() {
-    document.querySelectorAll('[data-nav-selected]').forEach(el => el.removeAttribute('data-nav-selected'));
+    document.querySelectorAll('[data-nav-selected]').forEach(el =>
+      el.removeAttribute('data-nav-selected')
+    );
   }
+
+  // ── Keyboard handler ──────────────────────────────────────────
 
   document.addEventListener('keydown', (e) => {
     if (blocked()) return;
 
+    const pages = getNavPages();
+    const idx = currentIndex(pages);
     const list = items();
     const sel = selected(list);
-    const idx = pageIndex(window.location.pathname);
 
     switch (e.key) {
       case 'ArrowRight':
-        e.preventDefault();
-        if (idx < PAGE_ORDER.length - 1) goToPage(idx + 1);
+        if (idx < pages.length - 1) {
+          e.preventDefault();
+          navigate(pages[idx + 1]);
+        }
         break;
 
       case 'ArrowLeft':
-        e.preventDefault();
-        if (idx > 0) goToPage(idx - 1);
+        if (idx > 0) {
+          e.preventDefault();
+          navigate(pages[idx - 1]);
+        }
         break;
 
       case 'ArrowDown':
@@ -96,8 +126,7 @@
       case 'Enter':
         if (sel >= 0 && list[sel]) {
           const href = list[sel].getAttribute('href') || '';
-          const external = href.startsWith('http') || href.startsWith('mailto:');
-          if (!external) e.preventDefault();
+          if (!href.startsWith('http') && !href.startsWith('mailto:')) e.preventDefault();
           list[sel].click();
         }
         break;
@@ -106,12 +135,14 @@
         if (sel >= 0) { e.preventDefault(); clearSelection(); }
         break;
 
-      case 'Backspace':
-        if (window.location.pathname !== PAGE_ORDER[idx]) {
+      case 'Backspace': {
+        const parentPage = pages[idx];
+        if (parentPage && norm(window.location.pathname) !== norm(parentPage)) {
           e.preventDefault();
-          goToPage(idx);
+          navigate(parentPage);
         }
         break;
+      }
     }
   });
 

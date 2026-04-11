@@ -36,15 +36,6 @@ import Base from '../layouts/Base.astro';
 </Base>
 
 <style>
-  .page-heading {
-    font-size: 44px;
-    font-weight: 600;
-    color: var(--text);
-    line-height: 1.05;
-    letter-spacing: -2px;
-    margin-bottom: 48px;
-  }
-
   .link-list {
     list-style: none;
   }
@@ -61,9 +52,11 @@ import Base from '../layouts/Base.astro';
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 14px 0;
+    padding: 14px 12px;
+    margin: 0 -12px;
+    border-radius: 6px;
     text-decoration: none;
-    transition: color 0.15s;
+    transition: color 0.15s, background 0.15s;
   }
 
   .link-left {

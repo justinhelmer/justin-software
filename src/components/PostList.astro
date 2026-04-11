@@ -49,9 +49,11 @@ const sorted = posts
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    padding: 12px 0;
+    padding: 12px 12px;
+    margin: 0 -12px;
+    border-radius: 6px;
     text-decoration: none;
-    transition: color 0.15s;
+    transition: color 0.15s, background 0.15s;
   }
 
   .post-title {
@@ -65,12 +67,5 @@ const sorted = posts
 
   .post-link[data-nav-selected] .post-title {
     color: var(--text);
-  }
-
-  .post-link[data-nav-selected] {
-    background: rgba(255, 255, 255, 0.03);
-    margin: 0 -8px;
-    padding: 12px 8px;
-    border-radius: 4px;
   }
 </style>
