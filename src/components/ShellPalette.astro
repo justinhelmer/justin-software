@@ -2,64 +2,293 @@
 import { getCollection } from 'astro:content';
 
 const posts = await getCollection('writing');
-const routes = [
-  { path: '/', label: 'home', type: 'page' },
-  { path: '/about', label: 'about', type: 'page' },
-  { path: '/writing', label: 'writing', type: 'page' },
-  { path: '/links', label: 'links', type: 'page' },
-  ...posts.map(p => ({
-    path: `/writing/${p.id}`,
-    label: p.data.title.toLowerCase(),
-    type: 'post',
-  })),
-];
+const siteData = {
+  routes: [
+    { path: '/', label: 'home', type: 'page' },
+    { path: '/about', label: 'about', type: 'page' },
+    { path: '/writing', label: 'writing', type: 'page' },
+    { path: '/links', label: 'links', type: 'page' },
+    ...posts.map(p => ({
+      path: `/writing/${p.id}`,
+      label: p.data.title,
+      type: 'post',
+    })),
+  ],
+  currentPath: Astro.url.pathname,
+};
 ---
 
-<script type="application/json" id="palette-routes" set:html={JSON.stringify(routes)} />
+<script type="application/json" id="shell-data" set:html={JSON.stringify(siteData)} />
 
 <div id="shell-palette" class="palette-overlay" aria-hidden="true">
   <div class="palette-backdrop"></div>
   <div class="palette-container">
     <div class="palette-input-row">
-      <span class="palette-path">~/justin.software</span>
-      <span class="palette-prompt">$</span>
-      <span class="palette-prefix">cd </span>
+      <span class="palette-prompt" id="palette-prompt">~/justin.software $</span>
       <input
         id="palette-input"
         class="palette-input"
         type="text"
         autocomplete="off"
         spellcheck="false"
+        placeholder="type a command..."
       />
     </div>
     <div id="palette-completions" class="palette-completions"></div>
-    <div class="palette-hint">
-      tab complete · enter navigate · esc close
+    <div class="palette-hint" id="palette-hint">
+      tab complete · enter execute · esc close
     </div>
   </div>
 </div>
 
 <script>
-  function initPalette() {
-    const routeData = document.getElementById('palette-routes');
-    if (!routeData) return;
-    const routes = JSON.parse(routeData.textContent || '[]');
+  function initShell() {
+    const dataEl = document.getElementById('shell-data');
+    if (!dataEl) return;
+    const { routes } = JSON.parse(dataEl.textContent || '{}');
 
     const palette = document.getElementById('shell-palette');
     const input = document.getElementById('palette-input') as HTMLInputElement | null;
     const completionsEl = document.getElementById('palette-completions');
-    if (!palette || !input || !completionsEl) return;
+    const hintEl = document.getElementById('palette-hint');
+    if (!palette || !input || !completionsEl || !hintEl) return;
 
     let isOpen = false;
     let activeIndex = 0;
-    let filtered: typeof routes = [];
+    let completions: { label: string; detail: string; value: string; action: () => void }[] = [];
+
+    // ── Command registry ──────────────────────────────────────────────
+    // Each command: { match, describe, complete, execute }
+    // match(input): does this command handle this input?
+    // describe(): one-line help string
+    // complete(args): return completion list for the arguments
+    // execute(args): run the command
+
+    interface Completion {
+      label: string;
+      detail: string;
+      value: string;
+      action: () => void;
+    }
+
+    interface Command {
+      name: string;
+      describe: () => string;
+      complete: (args: string) => Completion[];
+      execute: (args: string) => void;
+    }
+
+    function fuzzy(query: string, text: string): boolean {
+      if (!query) return true;
+      const q = query.toLowerCase();
+      const t = text.toLowerCase();
+      let qi = 0;
+      for (let ti = 0; ti < t.length && qi < q.length; ti++) {
+        if (t[ti] === q[qi]) qi++;
+      }
+      return qi === q.length;
+    }
+
+    function nav(path: string) {
+      close();
+      window.location.href = path;
+    }
+
+    const commands: Command[] = [
+      {
+        name: 'cd',
+        describe: () => 'Navigate to a page or post',
+        complete(args: string): Completion[] {
+          return routes
+            .filter((r: any) => fuzzy(args, r.label) || fuzzy(args, r.path))
+            .map((r: any) => ({
+              label: r.type === 'page' ? r.label + '/' : r.label,
+              detail: r.path === '/' ? '~' : r.path,
+              value: `cd ${r.path}`,
+              action: () => nav(r.path),
+            }));
+        },
+        execute(args: string) {
+          // Exact path match
+          const exact = routes.find((r: any) => r.path === args || r.label === args.toLowerCase());
+          if (exact) return nav(exact.path);
+          // Fuzzy single match
+          const matches = routes.filter((r: any) => fuzzy(args, r.label) || fuzzy(args, r.path));
+          if (matches.length === 1) return nav(matches[0].path);
+          // No match — flash the input
+          input.classList.add('shake');
+          setTimeout(() => input.classList.remove('shake'), 300);
+        },
+      },
+      {
+        name: 'ls',
+        describe: () => 'List pages or posts',
+        complete(args: string): Completion[] {
+          const sections = [
+            { label: 'pages', detail: 'List all pages', value: 'ls pages' },
+            { label: 'posts', detail: 'List all posts', value: 'ls posts' },
+          ];
+          if (!args) return sections.map(s => ({ ...s, action: () => setInput(s.value) }));
+          return sections
+            .filter(s => fuzzy(args, s.label))
+            .map(s => ({ ...s, action: () => setInput(s.value) }));
+        },
+        execute(args: string) {
+          const target = args.trim().toLowerCase();
+          if (target === 'posts') {
+            nav('/writing');
+          } else {
+            // Show pages as completions
+            showCompletions(
+              routes
+                .filter((r: any) => r.type === 'page')
+                .map((r: any) => ({
+                  label: r.label + '/',
+                  detail: r.path,
+                  value: `cd ${r.path}`,
+                  action: () => nav(r.path),
+                }))
+            );
+          }
+        },
+      },
+      {
+        name: 'help',
+        describe: () => 'Show available commands',
+        complete(): Completion[] {
+          return commands.map(c => ({
+            label: c.name,
+            detail: c.describe(),
+            value: c.name,
+            action: () => setInput(c.name + ' '),
+          }));
+        },
+        execute() {
+          showCompletions(
+            commands.map(c => ({
+              label: c.name,
+              detail: c.describe(),
+              value: c.name + ' ',
+              action: () => setInput(c.name + ' '),
+            }))
+          );
+        },
+      },
+    ];
+
+    // ── Shell logic ───────────────────────────────────────────────────
+
+    function setInput(val: string) {
+      input.value = val;
+      input.focus();
+      onInput();
+    }
+
+    function parseInput(raw: string): { cmd: string; args: string } {
+      const trimmed = raw.trim();
+      const space = trimmed.indexOf(' ');
+      if (space === -1) return { cmd: trimmed, args: '' };
+      return { cmd: trimmed.slice(0, space), args: trimmed.slice(space + 1) };
+    }
+
+    function getCompletions(raw: string): Completion[] {
+      const { cmd, args } = parseInput(raw);
+
+      // No input — show command list
+      if (!raw.trim()) {
+        return commands.map(c => ({
+          label: c.name,
+          detail: c.describe(),
+          value: c.name + ' ',
+          action: () => setInput(c.name + ' '),
+        }));
+      }
+
+      // Partial command match (no space yet) — complete command names
+      const hasSpace = raw.includes(' ');
+      if (!hasSpace) {
+        const matching = commands.filter(c => fuzzy(cmd, c.name));
+        // If exact match exists, show its completions
+        const exact = commands.find(c => c.name === cmd);
+        if (exact) return exact.complete(args);
+        // Otherwise complete command names
+        return matching.map(c => ({
+          label: c.name,
+          detail: c.describe(),
+          value: c.name + ' ',
+          action: () => setInput(c.name + ' '),
+        }));
+      }
+
+      // Command identified — delegate to its completer
+      const command = commands.find(c => c.name === cmd);
+      if (command) return command.complete(args);
+
+      // Unknown command — show help hint
+      return [{
+        label: 'unknown command',
+        detail: 'type "help" for available commands',
+        value: 'help',
+        action: () => setInput('help'),
+      }];
+    }
+
+    function showCompletions(items: Completion[]) {
+      completions = items;
+      activeIndex = 0;
+      render();
+    }
+
+    function render() {
+      completionsEl.innerHTML = completions.map((c, i) => {
+        const active = i === activeIndex;
+        return `<div class="completion${active ? ' active' : ''}" data-index="${i}">
+          <span class="completion-label">${c.label}</span>
+          <span class="completion-detail">${c.detail}</span>
+        </div>`;
+      }).join('');
+    }
+
+    function onInput() {
+      const raw = input.value;
+      completions = getCompletions(raw);
+      activeIndex = 0;
+      render();
+    }
+
+    function execute() {
+      const raw = input.value.trim();
+      if (!raw && completions[activeIndex]) {
+        completions[activeIndex].action();
+        return;
+      }
+
+      const { cmd, args } = parseInput(raw);
+
+      // If there's an active completion, use it
+      if (completions[activeIndex]) {
+        completions[activeIndex].action();
+        return;
+      }
+
+      // Try to find and execute the command
+      const command = commands.find(c => c.name === cmd);
+      if (command) {
+        command.execute(args);
+      } else {
+        // Default: treat as cd
+        commands[0].execute(raw);
+      }
+    }
+
+    // ── UI ─────────────────────────────────────────────────────────────
 
     function open() {
       isOpen = true;
       palette.setAttribute('aria-hidden', 'false');
       input.value = '';
-      activeIndex = 0;
-      updateCompletions('');
+      input.placeholder = 'type a command...';
+      onInput();
       input.focus();
     }
 
@@ -70,41 +299,7 @@ const routes = [
       input.blur();
     }
 
-    function navigate(path: string) {
-      close();
-      window.location.href = path;
-    }
-
-    function fuzzyMatch(query: string, label: string) {
-      if (!query) return true;
-      const q = query.toLowerCase();
-      const l = label.toLowerCase();
-      let qi = 0;
-      for (let li = 0; li < l.length && qi < q.length; li++) {
-        if (l[li] === q[qi]) qi++;
-      }
-      return qi === q.length;
-    }
-
-    function updateCompletions(query: string) {
-      filtered = routes.filter((r: any) => fuzzyMatch(query, r.label));
-      activeIndex = Math.min(activeIndex, Math.max(0, filtered.length - 1));
-
-      completionsEl.innerHTML = filtered.map((r: any, i: number) => {
-        const isActive = i === activeIndex;
-        const display = r.type === 'page' ? r.label + '/' : r.label;
-        const pathDisplay = r.path === '/' ? '~' : r.path;
-        return `<div class="completion${isActive ? ' active' : ''}" data-index="${i}" data-path="${r.path}">
-          <span class="completion-label">${display}</span>
-          <span class="completion-path">${pathDisplay}</span>
-        </div>`;
-      }).join('');
-    }
-
-    input.addEventListener('input', () => {
-      activeIndex = 0;
-      updateCompletions(input.value);
-    });
+    input.addEventListener('input', onInput);
 
     document.addEventListener('keydown', (e) => {
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
@@ -120,43 +315,42 @@ const routes = [
         close();
       } else if (e.key === 'Tab') {
         e.preventDefault();
-        if (filtered.length > 0) {
-          activeIndex = (activeIndex + (e.shiftKey ? -1 : 1) + filtered.length) % filtered.length;
-          updateCompletions(input.value);
+        if (completions.length > 0) {
+          // Tab fills the input with the active completion's value
+          const c = completions[activeIndex];
+          if (c) setInput(c.value);
         }
       } else if (e.key === 'ArrowDown') {
         e.preventDefault();
-        if (filtered.length > 0) {
-          activeIndex = (activeIndex + 1) % filtered.length;
-          updateCompletions(input.value);
+        if (completions.length > 0) {
+          activeIndex = (activeIndex + 1) % completions.length;
+          render();
         }
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        if (filtered.length > 0) {
-          activeIndex = (activeIndex - 1 + filtered.length) % filtered.length;
-          updateCompletions(input.value);
+        if (completions.length > 0) {
+          activeIndex = (activeIndex - 1 + completions.length) % completions.length;
+          render();
         }
       } else if (e.key === 'Enter') {
         e.preventDefault();
-        if (filtered[activeIndex]) {
-          navigate(filtered[activeIndex].path);
-        }
+        execute();
       }
     });
 
     completionsEl.addEventListener('click', (e) => {
       const item = (e.target as HTMLElement).closest('.completion') as HTMLElement | null;
-      if (item?.dataset.path) {
-        navigate(item.dataset.path);
+      if (item?.dataset.index) {
+        const idx = parseInt(item.dataset.index);
+        if (completions[idx]) completions[idx].action();
       }
     });
 
     palette.querySelector('.palette-backdrop')?.addEventListener('click', close);
   }
 
-  // Init on first load and on view transitions
-  initPalette();
-  document.addEventListener('astro:after-swap', initPalette);
+  initShell();
+  document.addEventListener('astro:after-swap', initShell);
 </script>
 
 <style>
@@ -204,16 +398,9 @@ const routes = [
     font-size: 13px;
   }
 
-  .palette-path {
-    color: var(--text-muted);
-  }
-
   .palette-prompt {
-    color: var(--text-secondary);
-  }
-
-  .palette-prefix {
-    color: var(--text-link);
+    color: var(--text-muted);
+    white-space: nowrap;
   }
 
   .palette-input {
@@ -227,21 +414,36 @@ const routes = [
     caret-color: var(--text-secondary);
   }
 
+  .palette-input::placeholder {
+    color: var(--text-tertiary);
+  }
+
+  .palette-input.shake {
+    animation: shake 0.3s ease;
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+  }
+
   .palette-completions {
     padding: 8px 20px;
     font-family: var(--font-mono);
     font-size: 13px;
-    max-height: 240px;
+    max-height: 280px;
     overflow-y: auto;
   }
 
   .completion {
-    padding: 6px 8px;
+    padding: 8px 10px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-radius: 3px;
+    border-radius: 4px;
     cursor: pointer;
+    gap: 16px;
   }
 
   .completion.active {
@@ -260,9 +462,13 @@ const routes = [
     color: var(--text);
   }
 
-  .completion-path {
+  .completion-detail {
     color: var(--text-tertiary);
     font-size: 11px;
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .palette-hint {

@@ -2,36 +2,6 @@
 ---
 
 <script>
-  let gPending = false;
-  let gTimer: ReturnType<typeof setTimeout> | null = null;
-
-  const gotoMap: Record<string, string> = {
-    h: '/',
-    a: '/about',
-    w: '/writing',
-    l: '/links',
-  };
-
-  function getPostLinks(): HTMLAnchorElement[] {
-    return Array.from(document.querySelectorAll('.post-link, .link-item'));
-  }
-
-  function getSelectedIndex(links: HTMLAnchorElement[]): number {
-    return links.findIndex(el => el.hasAttribute('data-selected'));
-  }
-
-  function selectLink(links: HTMLAnchorElement[], index: number) {
-    links.forEach(el => el.removeAttribute('data-selected'));
-    if (index >= 0 && index < links.length) {
-      links[index].setAttribute('data-selected', '');
-      links[index].scrollIntoView({ block: 'nearest' });
-    }
-  }
-
-  function clearSelection(links: HTMLAnchorElement[]) {
-    links.forEach(el => el.removeAttribute('data-selected'));
-  }
-
   function isInputFocused(): boolean {
     const el = document.activeElement;
     return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
@@ -42,57 +12,57 @@
     return palette?.getAttribute('aria-hidden') === 'false';
   }
 
+  function getListItems(): HTMLAnchorElement[] {
+    return Array.from(document.querySelectorAll('.post-link, .link-item'));
+  }
+
+  function getSelectedIndex(items: HTMLAnchorElement[]): number {
+    return items.findIndex(el => el.hasAttribute('data-selected'));
+  }
+
+  function select(items: HTMLAnchorElement[], index: number) {
+    items.forEach(el => el.removeAttribute('data-selected'));
+    if (index >= 0 && index < items.length) {
+      items[index].setAttribute('data-selected', '');
+      items[index].scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  function clearSelection(items: HTMLAnchorElement[]) {
+    items.forEach(el => el.removeAttribute('data-selected'));
+  }
+
   document.addEventListener('keydown', (e) => {
     if (isInputFocused() || isPaletteOpen()) return;
 
-    const links = getPostLinks();
-    const current = getSelectedIndex(links);
+    const items = getListItems();
+    const current = getSelectedIndex(items);
 
-    if (gPending) {
-      gPending = false;
-      if (gTimer) clearTimeout(gTimer);
-      const target = gotoMap[e.key];
-      if (target) {
-        e.preventDefault();
-        window.location.href = target;
-      }
-      return;
-    }
-
-    if (e.key === 'g' && !e.metaKey && !e.ctrlKey) {
-      gPending = true;
-      gTimer = setTimeout(() => { gPending = false; }, 500);
-      return;
-    }
-
-    if (e.key === 'j' && links.length > 0) {
+    // Arrow down — select next item
+    if (e.key === 'ArrowDown' && items.length > 0) {
       e.preventDefault();
-      const next = current < links.length - 1 ? current + 1 : 0;
-      selectLink(links, next);
+      select(items, current < items.length - 1 ? current + 1 : 0);
       return;
     }
 
-    if (e.key === 'k' && links.length > 0) {
+    // Arrow up — select previous item
+    if (e.key === 'ArrowUp' && items.length > 0) {
       e.preventDefault();
-      const prev = current > 0 ? current - 1 : links.length - 1;
-      selectLink(links, prev);
+      select(items, current > 0 ? current - 1 : items.length - 1);
       return;
     }
 
+    // Enter — open selected
     if (e.key === 'Enter' && current >= 0) {
       e.preventDefault();
-      links[current].click();
+      items[current].click();
       return;
     }
 
+    // Escape — clear selection
     if (e.key === 'Escape') {
-      clearSelection(links);
+      clearSelection(items);
       return;
     }
-  });
-
-  document.addEventListener('astro:after-swap', () => {
-    gPending = false;
-    if (gTimer) clearTimeout(gTimer);
   });
 </script>
