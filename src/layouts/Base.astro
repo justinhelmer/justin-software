@@ -33,9 +33,23 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
     <meta property="og:url" content={canonicalURL} />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="author" href="/humans.txt" />
     <script is:inline>
       document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
     </script>
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "Person",
+      "name": "Justin Helmer",
+      "url": "https://justin.software",
+      "jobTitle": "Principal Engineer",
+      "description": "Building systems at global scale.",
+      "sameAs": [
+        "https://github.com/justinhelmer",
+        "https://www.linkedin.com/in/justinhelmer"
+      ]
+    })} />
     <ClientRouter />
   </head>
   <body>

@@ -1,0 +1,3 @@
+Contact: mailto:admin@justin.software
+Preferred-Languages: en
+Canonical: https://justin.software/.well-known/security.txt

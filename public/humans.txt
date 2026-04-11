@@ -1,0 +1,11 @@
+/* TEAM */
+Name: Justin Helmer
+Role: Principal Engineer
+Site: https://justin.software
+Contact: admin@justin.software
+Location: San Francisco Bay Area
+
+/* SITE */
+Built with: Astro
+Hosted on: Cloudflare Pages
+Fonts: Plus Jakarta Sans, Fira Code
