@@ -9,9 +9,14 @@ import '../styles/global.css';
 interface Props {
   title: string;
   description?: string;
+  subtitle?: string;
 }
 
-const { title, description = 'Justin Helmer — Principal Engineer. Systems architect. Infrastructure builder.' } = Astro.props;
+const {
+  title,
+  description = 'Justin Helmer — Principal Engineer. Systems architect. Infrastructure builder.',
+  subtitle,
+} = Astro.props;
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 ---
 
@@ -34,11 +39,12 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
   <body>
     <div class="site">
       <Nav currentPath={Astro.url.pathname} />
-      <div class="content-frame">
-        <main transition:name="main-content">
-          <slot />
-        </main>
+      <div class="subheader">
+        {subtitle ? <p class="mono-label">{subtitle}</p> : null}
       </div>
+      <main transition:animate="fade">
+        <slot />
+      </main>
     </div>
     <ShellPalette />
     <KeyboardNav />
@@ -49,92 +55,28 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 <script>
   import { navigate } from 'astro:transitions/client';
   (window as any).__astro_navigate = navigate;
-
-  // Direction detection for slide transitions
-  const PAGE_ORDER = ['/', '/about', '/writing', '/links'];
-
-  function idx(path: string): number {
-    const p = path.replace(/\/$/, '') || '/';
-    const exact = PAGE_ORDER.indexOf(p);
-    if (exact !== -1) return exact;
-    for (let i = PAGE_ORDER.length - 1; i >= 0; i--) {
-      if (p.startsWith(PAGE_ORDER[i]) && PAGE_ORDER[i] !== '/') return i;
-    }
-    return 0;
-  }
-
-  document.addEventListener('astro:before-preparation', (e: any) => {
-    if (!document.documentElement.dataset.navDirection) {
-      const from = idx(window.location.pathname);
-      const to = idx(new URL(e.to, window.location.origin).pathname);
-      document.documentElement.dataset.navDirection = to > from ? 'forward' : to < from ? 'back' : 'none';
-    }
-  });
-
-  document.addEventListener('astro:after-swap', () => {
-    requestAnimationFrame(() => {
-      delete document.documentElement.dataset.navDirection;
-    });
-  });
 </script>
 
 <style>
   /*
-   * Layout: CSS Grid with 2 rows.
-   * Row 1: nav (intrinsic height from its own padding + content)
-   * Row 2: content frame (fills remaining viewport)
-   *
-   * The content-frame clips transitions so slides don't cause CLS.
-   * The grid guarantees the nav-to-content boundary never shifts.
+   * 3-row grid: nav | subheader (fixed 48px) | content (fills rest).
+   * The subheader guarantees h1 sits at the same Y on every page.
    */
   .site {
     display: grid;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto 48px 1fr;
     min-height: 100vh;
     max-width: var(--max-width);
     margin: 0 auto;
     padding: 0 var(--page-padding);
   }
 
-  .content-frame {
-    overflow: hidden;
-    position: relative;
+  .subheader {
+    display: flex;
+    align-items: flex-end;
   }
 
   main {
-    padding: 48px 0 var(--page-padding);
-  }
-</style>
-
-<style is:global>
-  /* Directional slide transitions */
-  [data-nav-direction="forward"] [data-astro-transition="main-content"] {
-    animation: slide-in-right 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-  [data-nav-direction="forward"] [data-astro-transition="main-content"][data-astro-transition-fallback="old"] {
-    animation: slide-out-left 0.25s cubic-bezier(0.4, 0, 1, 1) both;
-  }
-  [data-nav-direction="back"] [data-astro-transition="main-content"] {
-    animation: slide-in-left 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-  [data-nav-direction="back"] [data-astro-transition="main-content"][data-astro-transition-fallback="old"] {
-    animation: slide-out-right 0.25s cubic-bezier(0.4, 0, 1, 1) both;
-  }
-
-  @keyframes slide-in-right {
-    from { opacity: 0; transform: translateX(60px); }
-    to   { opacity: 1; transform: translateX(0); }
-  }
-  @keyframes slide-out-left {
-    from { opacity: 1; transform: translateX(0); }
-    to   { opacity: 0; transform: translateX(-60px); }
-  }
-  @keyframes slide-in-left {
-    from { opacity: 0; transform: translateX(-60px); }
-    to   { opacity: 1; transform: translateX(0); }
-  }
-  @keyframes slide-out-right {
-    from { opacity: 1; transform: translateX(0); }
-    to   { opacity: 0; transform: translateX(60px); }
+    padding-bottom: var(--page-padding);
   }
 </style>

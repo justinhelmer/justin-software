@@ -7,11 +7,17 @@ const posts = await getCollection('writing');
 const sorted = latestPosts(posts, 2);
 ---
 
-<Base title="Home">
+<Base title="Home" subtitle="Principal Engineer · Webflow">
   <section class="hero">
-    <p class="mono-label">Principal Engineer · Webflow</p>
-    <h1 class="name">Justin Helmer</h1>
-    <p class="bio">Principal Engineer at Webflow. I build the systems that other engineers build on.</p>
+    <div class="hero-card">
+      <div class="avatar">
+        <img src="/images/justin.svg" alt="Justin Helmer" class="avatar-img" />
+      </div>
+      <div>
+        <h1 class="name">Justin Helmer</h1>
+        <p class="bio">I build the systems that other engineers build on.</p>
+      </div>
+    </div>
   </section>
 
   <section class="latest">
@@ -32,13 +38,30 @@ const sorted = latestPosts(posts, 2);
     margin-bottom: 48px;
   }
 
+  .hero-card {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .avatar {
+    flex-shrink: 0;
+  }
+
+  .avatar-img {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+  }
+
   .name {
     font-size: 44px;
     font-weight: 600;
     color: var(--text);
     line-height: 1.05;
     letter-spacing: -2px;
-    margin: 16px 0 20px;
+    margin-bottom: 8px;
   }
 
   .bio {
@@ -86,6 +109,15 @@ const sorted = latestPosts(posts, 2);
     .name {
       font-size: 32px;
       letter-spacing: -1px;
+    }
+
+    .hero-card {
+      gap: 16px;
+    }
+
+    .avatar-img {
+      width: 48px;
+      height: 48px;
     }
 
     .latest-grid {
