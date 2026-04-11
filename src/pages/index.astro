@@ -1,12 +1,10 @@
 ---
 import Base from '../layouts/Base.astro';
 import { getCollection } from 'astro:content';
-import { formatDate } from '../lib/config';
+import { formatDate, latestPosts } from '../lib/config';
 
 const posts = await getCollection('writing');
-const sorted = posts
-  .sort((a, b) => b.data.date.getTime() - a.data.date.getTime())
-  .slice(0, 2);
+const sorted = latestPosts(posts, 2);
 ---
 
 <Base title="Home">

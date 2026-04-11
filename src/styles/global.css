@@ -179,10 +179,30 @@ a:hover {
   margin-bottom: 48px;
 }
 
+/* List rows — shared between post lists and link lists */
+.list-row {
+  border-bottom: 1px solid var(--border);
+}
+
+.list-row:first-child {
+  border-top: 1px solid var(--border);
+}
+
+.list-link {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 12px;
+  margin: 0 -12px;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: color 0.15s, background 0.15s;
+}
+
 /* Keyboard navigation selection */
 [data-nav-selected] {
-  background: rgba(255, 255, 255, 0.04) !important;
-  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 6px;
   outline: 1px solid rgba(255, 255, 255, 0.08);
   outline-offset: -1px;
 }

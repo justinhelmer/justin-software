@@ -1,10 +1,4 @@
-/**
- * Site-wide constants. Single source of truth for navigation order,
- * formatting, and shared configuration.
- */
-
-/** Top-level page order — drives keyboard nav (←/→) and transition direction. */
-export const PAGE_ORDER = ['/', '/about', '/writing', '/links'] as const;
+/** Shared utilities for the justin.software build. */
 
 /** Format a Date as YYYY.MM for display. */
 export function formatDate(date: Date): string {
@@ -13,15 +7,8 @@ export function formatDate(date: Date): string {
   return `${y}.${m}`;
 }
 
-/**
- * Resolve a pathname to its index in PAGE_ORDER.
- * Handles sub-pages: /writing/hello-world → index of /writing.
- */
-export function getPageIndex(path: string): number {
-  const exact = PAGE_ORDER.indexOf(path as typeof PAGE_ORDER[number]);
-  if (exact !== -1) return exact;
-  for (let i = PAGE_ORDER.length - 1; i >= 0; i--) {
-    if (path.startsWith(PAGE_ORDER[i]) && PAGE_ORDER[i] !== '/') return i;
-  }
-  return 0;
+/** Sort posts by date descending with optional limit. */
+export function latestPosts<T extends { data: { date: Date } }>(posts: T[], limit?: number): T[] {
+  const sorted = [...posts].sort((a, b) => b.data.date.getTime() - a.data.date.getTime());
+  return limit ? sorted.slice(0, limit) : sorted;
 }

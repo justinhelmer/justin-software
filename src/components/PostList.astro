@@ -1,5 +1,5 @@
 ---
-import { formatDate } from '../lib/config';
+import { formatDate, latestPosts } from '../lib/config';
 
 interface Post {
   id: string;
@@ -16,15 +16,13 @@ interface Props {
 
 const { posts, limit } = Astro.props;
 
-const sorted = posts
-  .sort((a, b) => b.data.date.getTime() - a.data.date.getTime())
-  .slice(0, limit);
+const sorted = latestPosts(posts, limit);
 ---
 
 <ul class="post-list" role="list">
   {sorted.map(post => (
-    <li class="post-row">
-      <a href={`/writing/${post.id}`} class="post-link" data-nav-item data-post-id={post.id}>
+    <li class="list-row">
+      <a href={`/writing/${post.id}`} class="post-link list-link" data-nav-item data-post-id={post.id}>
         <span class="post-title">{post.data.title}</span>
         <span class="post-date mono-date">{formatDate(post.data.date)}</span>
       </a>
@@ -37,34 +35,12 @@ const sorted = posts
     list-style: none;
   }
 
-  .post-row {
-    border-bottom: 1px solid var(--border);
-  }
-
-  .post-row:first-child {
-    border-top: 1px solid var(--border);
-  }
-
-  .post-link {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    padding: 12px 12px;
-    margin: 0 -12px;
-    border-radius: 6px;
-    text-decoration: none;
-    transition: color 0.15s, background 0.15s;
-  }
-
   .post-title {
     font-size: 14px;
     color: var(--text-link);
   }
 
-  .post-link:hover .post-title {
-    color: var(--text);
-  }
-
+  .post-link:hover .post-title,
   .post-link[data-nav-selected] .post-title {
     color: var(--text);
   }
