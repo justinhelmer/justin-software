@@ -9,8 +9,13 @@ const sorted = latestPosts(posts, 2);
 
 <Base title="Home" subtitle="Principal Engineer · Webflow">
   <section class="hero">
-    <h1 class="name">Justin Helmer</h1>
-    <p class="bio">I build the systems that other engineers build on.</p>
+    <div class="identity">
+      <img src="/images/justin.svg" alt="Justin Helmer" class="photo" />
+      <div>
+        <h1 class="name">Justin Helmer</h1>
+        <p class="bio">I build the systems that other engineers build on.</p>
+      </div>
+    </div>
   </section>
 
   <section class="latest">
@@ -29,6 +34,20 @@ const sorted = latestPosts(posts, 2);
 <style>
   .hero {
     margin-bottom: var(--sp-12);
+  }
+
+  .identity {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-5);
+  }
+
+  .photo {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    flex-shrink: 0;
   }
 
   .name {

@@ -2,22 +2,20 @@
 import { getCollection } from 'astro:content';
 
 const posts = await getCollection('writing');
-const siteData = {
-  routes: [
-    { path: '/', label: 'home', type: 'page' },
-    { path: '/about', label: 'about', type: 'page' },
-    { path: '/writing', label: 'writing', type: 'page' },
-    { path: '/links', label: 'links', type: 'page' },
-    ...posts.map(p => ({
-      path: `/writing/${p.id}`,
-      label: p.data.title,
-      type: 'post',
-    })),
-  ],
-};
+const routes = [
+  { path: '/', label: 'home', type: 'page' as const },
+  { path: '/about', label: 'about', type: 'page' as const },
+  { path: '/writing', label: 'writing', type: 'page' as const },
+  { path: '/links', label: 'links', type: 'page' as const },
+  ...posts.map(p => ({
+    path: `/writing/${p.id}`,
+    label: p.data.title,
+    type: 'post' as const,
+  })),
+];
 ---
 
-<script type="application/json" id="shell-data" set:html={JSON.stringify(siteData)} />
+<script type="application/json" id="shell-data" set:html={JSON.stringify(routes)} />
 
 <div id="shell-palette" class="palette-overlay" aria-hidden="true">
   <div class="palette-backdrop"></div>
@@ -33,33 +31,20 @@ const siteData = {
         type="text"
         autocomplete="off"
         spellcheck="false"
+        placeholder="cd ..."
       />
     </div>
     <div id="palette-completions" class="palette-completions"></div>
     <div class="palette-hint">
-      <span><kbd>tab</kbd> complete</span>
       <span><kbd>↑↓</kbd> select</span>
-      <span><kbd>↵</kbd> run</span>
+      <span><kbd>↵</kbd> go</span>
       <span><kbd>esc</kbd> close</span>
     </div>
   </div>
 </div>
 
 <script>
-  interface Completion {
-    label: string;
-    detail: string;
-    kind: 'command' | 'page' | 'post';
-    value: string;
-    action: () => void;
-  }
-
-  interface Command {
-    name: string;
-    describe: () => string;
-    complete: (args: string) => Completion[];
-    execute: (args: string) => void;
-  }
+  import { navigate } from 'astro:transitions/client';
 
   interface Route {
     path: string;
@@ -67,10 +52,10 @@ const siteData = {
     type: 'page' | 'post';
   }
 
-  function initShell() {
+  function initPalette() {
     const dataEl = document.getElementById('shell-data');
     if (!dataEl) return;
-    const routes: Route[] = JSON.parse(dataEl.textContent || '[]').routes;
+    const routes: Route[] = JSON.parse(dataEl.textContent || '[]');
 
     const palette = document.getElementById('shell-palette');
     const input = document.getElementById('palette-input') as HTMLInputElement | null;
@@ -79,9 +64,7 @@ const siteData = {
 
     let isOpen = false;
     let activeIndex = 0;
-    let completions: Completion[] = [];
-
-    const astroNavigate = (window as any).__astro_navigate as ((path: string) => void) | undefined;
+    let matches: Route[] = [...routes];
 
     function fuzzy(query: string, text: string): boolean {
       if (!query) return true;
@@ -94,161 +77,52 @@ const siteData = {
       return qi === q.length;
     }
 
-    function nav(path: string) {
+    function go(path: string) {
       close();
-      if (astroNavigate) astroNavigate(path);
-      else window.location.href = path;
+      navigate(path);
     }
 
-    const commands: Command[] = [
-      {
-        name: 'cd',
-        describe: () => 'Navigate to a page or post',
-        complete(args: string): Completion[] {
-          return routes
-            .filter(r => fuzzy(args, r.label) || fuzzy(args, r.path))
-            .map(r => ({
-              label: r.label,
-              detail: r.path,
-              kind: r.type === 'page' ? 'page' : 'post',
-              value: `cd ${r.path}`,
-              action: () => nav(r.path),
-            }));
-        },
-        execute(args: string) {
-          const exact = routes.find(r => r.path === args || r.label === args.toLowerCase());
-          if (exact) return nav(exact.path);
-          const matches = routes.filter(r => fuzzy(args, r.label) || fuzzy(args, r.path));
-          if (matches.length === 1) return nav(matches[0].path);
-          input.classList.add('shake');
-          setTimeout(() => input.classList.remove('shake'), 300);
-        },
-      },
-      {
-        name: 'help',
-        describe: () => 'Show available commands',
-        complete(): Completion[] {
-          return commands.map(c => ({
-            label: c.name, detail: c.describe(), kind: 'command' as const,
-            value: c.name + ' ', action: () => setInput(c.name + ' '),
-          }));
-        },
-        execute() {
-          completions = commands.map(c => ({
-            label: c.name, detail: c.describe(), kind: 'command' as const,
-            value: c.name + ' ', action: () => setInput(c.name + ' '),
-          }));
-          activeIndex = 0;
-          render();
-        },
-      },
-    ];
-
-    function setInput(val: string) {
-      input.value = val;
-      input.focus();
-      onInput();
-    }
-
-    function parseInput(raw: string): { cmd: string; args: string } {
-      const trimmed = raw.trim();
-      const space = trimmed.indexOf(' ');
-      if (space === -1) return { cmd: trimmed, args: '' };
-      return { cmd: trimmed.slice(0, space), args: trimmed.slice(space + 1) };
-    }
-
-    function getCompletions(raw: string): Completion[] {
-      const { cmd, args } = parseInput(raw);
-      const hasSpace = raw.includes(' ');
-
-      // Empty — show just the commands
-      if (!raw.trim()) {
-        return commands.map(c => ({
-          label: c.name, detail: c.describe(), kind: 'command' as const,
-          value: c.name + ' ', action: () => setInput(c.name + ' '),
-        }));
-      }
-
-      // Space present — command is locked in, delegate to completer
-      if (hasSpace) {
-        const command = commands.find(c => c.name === cmd);
-        if (command) return command.complete(args);
-      }
-
-      // No space — match command names and routes with prefix
-      const matchingCmds: Completion[] = commands
-        .filter(c => c.name.startsWith(cmd.toLowerCase()))
-        .map(c => ({
-          label: c.name, detail: c.describe(), kind: 'command' as const,
-          value: c.name + ' ', action: () => setInput(c.name + ' '),
-        }));
-
-      const matchingRoutes: Completion[] = routes
-        .filter(r => r.label.startsWith(cmd.toLowerCase()))
-        .map(r => ({
-          label: r.label, detail: r.path,
-          kind: (r.type === 'page' ? 'page' : 'post') as 'page' | 'post',
-          value: `cd ${r.path}`, action: () => nav(r.path),
-        }));
-
-      const results = [...matchingCmds, ...matchingRoutes];
-      if (results.length > 0) return results;
-
-      return [{
-        label: 'no matches', detail: 'try help', kind: 'command' as const,
-        value: 'help', action: () => setInput('help'),
-      }];
+    function filter(query: string) {
+      const q = query.replace(/^cd\s+/, '').trim();
+      matches = routes.filter(r => fuzzy(q, r.label) || fuzzy(q, r.path));
+      activeIndex = 0;
+      render();
     }
 
     function render() {
       let html = '';
-      let lastKind = '';
+      let lastType = '';
 
-      completions.forEach((c, i) => {
-        if (c.kind !== lastKind && lastKind !== '') {
+      matches.forEach((r, i) => {
+        if (r.type !== lastType && lastType !== '') {
           html += '<div class="sh-divider"></div>';
         }
-        lastKind = c.kind;
+        lastType = r.type;
 
         const active = i === activeIndex;
-        const dotClass = c.kind === 'command' ? 'sh-dot-cmd'
-                       : c.kind === 'page' ? 'sh-dot-page'
-                       : 'sh-dot-post';
+        const dotClass = r.type === 'page' ? 'sh-dot-page' : 'sh-dot-post';
 
         html += `<div class="sh-row${active ? ' sh-active' : ''}" data-index="${i}">
           <span class="sh-dot ${dotClass}"></span>
-          <span class="sh-label">${c.label}</span>
-          <span class="sh-detail">${c.detail}</span>
+          <span class="sh-label">${r.label}</span>
+          <span class="sh-detail">${r.path}</span>
         </div>`;
       });
+
+      if (!matches.length) {
+        html = '<div class="sh-row"><span class="sh-label" style="color:var(--pal-text-faint)">no matches</span></div>';
+      }
 
       completionsEl.innerHTML = html;
       const activeEl = completionsEl.querySelector('.sh-active');
       if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });
     }
 
-    function onInput() {
-      completions = getCompletions(input.value);
-      activeIndex = 0;
-      render();
-    }
-
-    function execute() {
-      if (completions[activeIndex]) {
-        completions[activeIndex].action();
-        return;
-      }
-      const { cmd, args } = parseInput(input.value.trim());
-      const command = commands.find(c => c.name === cmd);
-      if (command) command.execute(args);
-      else commands[0].execute(input.value.trim());
-    }
-
     function open() {
       isOpen = true;
       palette.setAttribute('aria-hidden', 'false');
       input.value = '';
-      onInput();
+      filter('');
       setTimeout(() => input.focus({ preventScroll: true }), 50);
     }
 
@@ -259,7 +133,7 @@ const siteData = {
       input.blur();
     }
 
-    input.addEventListener('input', onInput);
+    input.addEventListener('input', () => filter(input.value));
 
     document.addEventListener('keydown', (e) => {
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
@@ -270,47 +144,40 @@ const siteData = {
 
       if (!isOpen) return;
 
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        close();
-      } else if (e.key === 'Tab') {
-        e.preventDefault();
-        if (completions[activeIndex]) setInput(completions[activeIndex].value);
-      } else if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        if (completions.length > 0) {
-          activeIndex = (activeIndex + 1) % completions.length;
-          render();
-        }
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        if (completions.length > 0) {
-          activeIndex = (activeIndex - 1 + completions.length) % completions.length;
-          render();
-        }
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        execute();
+      switch (e.key) {
+        case 'Escape':
+          e.preventDefault();
+          close();
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          if (matches.length) { activeIndex = (activeIndex + 1) % matches.length; render(); }
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          if (matches.length) { activeIndex = (activeIndex - 1 + matches.length) % matches.length; render(); }
+          break;
+        case 'Enter':
+          e.preventDefault();
+          if (matches[activeIndex]) go(matches[activeIndex].path);
+          break;
       }
     });
 
     completionsEl.addEventListener('click', (e) => {
-      const item = (e.target as HTMLElement).closest('.sh-row') as HTMLElement | null;
-      if (item?.dataset.index) {
-        const idx = parseInt(item.dataset.index);
-        if (completions[idx]) completions[idx].action();
-      }
+      const row = (e.target as HTMLElement).closest('.sh-row');
+      const idx = row?.getAttribute('data-index');
+      if (idx != null && matches[+idx]) go(matches[+idx].path);
     });
 
     palette.querySelector('.palette-backdrop')?.addEventListener('click', close);
   }
 
-  initShell();
-  document.addEventListener('astro:after-swap', initShell);
+  initPalette();
+  document.addEventListener('astro:after-swap', initPalette);
 </script>
 
 <style is:global>
-  /* Palette theme (Tokyo Night) */
   :root {
     --pal-bg: #1a1b26;
     --pal-border: #292d3e;
@@ -326,7 +193,6 @@ const siteData = {
     --pal-hover-bg: rgba(255, 255, 255, 0.03);
   }
 
-  /* ── Overlay ─────────────────────────────────────────────────── */
   .palette-overlay {
     position: fixed;
     inset: 0;
@@ -357,12 +223,10 @@ const siteData = {
     transform: translateY(100%);
   }
 
-  /* ── Prompt ──────────────────────────────────────────────────── */
   .palette-input-row {
     padding: 14px 20px;
     display: flex;
     align-items: center;
-    gap: 0;
     border-bottom: 1px solid var(--pal-border);
     font-family: var(--font-mono);
     font-size: 14px;
@@ -373,16 +237,8 @@ const siteData = {
     margin-right: 12px;
     white-space: nowrap;
   }
-  .prompt-dir {
-    color: var(--pal-accent);
-    font-weight: 500;
-  }
-  .prompt-arrow {
-    color: var(--pal-purple);
-    margin-left: 10px;
-    font-weight: 700;
-    font-size: 16px;
-  }
+  .prompt-dir { color: var(--pal-accent); font-weight: 500; }
+  .prompt-arrow { color: var(--pal-purple); margin-left: 10px; font-weight: 700; font-size: 16px; }
   .palette-input {
     flex: 1;
     background: none;
@@ -393,16 +249,14 @@ const siteData = {
     font-size: 14px;
     caret-color: var(--pal-purple);
   }
-  .palette-input.shake {
-    animation: palette-shake 0.3s ease;
-  }
+  .palette-input::placeholder { color: var(--pal-text-faint); }
+  .palette-input.shake { animation: palette-shake 0.3s ease; }
   @keyframes palette-shake {
     0%, 100% { transform: translateX(0); }
     25% { transform: translateX(-4px); }
     75% { transform: translateX(4px); }
   }
 
-  /* ── Completions ─────────────────────────────────────────────── */
   .palette-completions {
     height: 240px;
     overflow-y: auto;
@@ -411,11 +265,7 @@ const siteData = {
     font-size: 13px;
   }
 
-  .sh-divider {
-    height: 1px;
-    background: var(--pal-border);
-    margin: 6px 12px;
-  }
+  .sh-divider { height: 1px; background: var(--pal-border); margin: 6px 12px; }
 
   .sh-row {
     display: grid;
@@ -428,52 +278,19 @@ const siteData = {
     border-left: 3px solid transparent;
     margin: 1px 0;
   }
+  .sh-row:hover:not(.sh-active) { background: var(--pal-hover-bg); }
+  .sh-active { background: var(--pal-active-bg); border-left-color: var(--pal-accent); }
 
-  .sh-row:hover:not(.sh-active) {
-    background: var(--pal-hover-bg);
-  }
+  .sh-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .sh-dot-page { background: var(--pal-green); }
+  .sh-dot-post { background: var(--pal-yellow); }
 
-  .sh-active {
-    background: var(--pal-active-bg);
-    border-left-color: var(--pal-accent);
-  }
+  .sh-label { color: var(--pal-text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sh-active .sh-label { color: var(--pal-text); font-weight: 500; }
 
-  /* Colored dot indicators */
-  .sh-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-  .sh-dot-cmd  { background: var(--pal-purple); } /* purple */
-  .sh-dot-page { background: var(--pal-green); }  /* green */
-  .sh-dot-post { background: var(--pal-yellow); } /* yellow */
+  .sh-detail { color: var(--pal-text-faint); font-size: 11px; white-space: nowrap; text-align: right; }
+  .sh-active .sh-detail { color: var(--pal-text-muted); }
 
-  .sh-label {
-    color: var(--pal-text-dim);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 13px;
-  }
-
-  .sh-active .sh-label {
-    color: var(--pal-text);
-    font-weight: 500;
-  }
-
-  .sh-detail {
-    color: var(--pal-text-faint);
-    font-size: 11px;
-    white-space: nowrap;
-    text-align: right;
-  }
-
-  .sh-active .sh-detail {
-    color: var(--pal-text-muted);
-  }
-
-  /* ── Hint bar ────────────────────────────────────────────────── */
   .palette-hint {
     padding: 8px 20px;
     font-size: 10px;

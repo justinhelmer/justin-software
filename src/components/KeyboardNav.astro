@@ -2,19 +2,19 @@
 /**
  * Keyboard navigation — driven by the actual nav links in the DOM.
  *
- * Instead of a hardcoded PAGE_ORDER, this reads the nav links from
- * the header and uses them as the navigation structure. The DOM is
- * the source of truth — if a link is in the nav, it's navigable.
- *
- *   ← / →     traverse nav links (page-level)
+ *   ← / →     traverse pages
  *   ↑ / ↓     select items within the current page
  *   Enter      open selected item
  *   Escape     clear selection
  *   Backspace  go back to parent page
+ *
+ * Pages mark navigable items with `data-nav-item` on <a> elements.
  */
 ---
 
 <script>
+  import { navigate } from 'astro:transitions/client';
+
   function blocked(): boolean {
     const active = document.activeElement;
     if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) return true;
@@ -23,10 +23,8 @@
     return false;
   }
 
-  /** Read the navigation structure from the actual nav links in the DOM. */
   function getNavPages(): string[] {
     const links = document.querySelectorAll('header nav a[href]');
-    // Home (/) is always the implicit first — it's the mark link, not in nav
     const pages = ['/'];
     links.forEach(a => {
       const href = (a as HTMLAnchorElement).getAttribute('href');
@@ -35,33 +33,25 @@
     return pages;
   }
 
-  /** Normalize path by stripping trailing slash (except root). */
   function norm(path: string): string {
     if (path === '/') return path;
     return path.replace(/\/$/, '');
   }
 
-  /** Find current page index in nav order. Handles sub-pages. */
   function currentIndex(pages: string[]): number {
     const path = norm(window.location.pathname);
     const exact = pages.indexOf(path);
     if (exact !== -1) return exact;
-    // Sub-page: /writing/hello-world → /writing
     for (let i = pages.length - 1; i >= 0; i--) {
       if (path.startsWith(pages[i]) && pages[i] !== '/') return i;
     }
     return 0;
   }
 
-  function navigateTo(path: string, direction?: 'forward' | 'back') {
+  function go(path: string) {
     if (norm(window.location.pathname) === norm(path)) return;
-    if (direction) document.documentElement.dataset.navDirection = direction;
-    const nav = (window as any).__astro_navigate;
-    if (nav) nav(path);
-    else window.location.href = path;
+    navigate(path);
   }
-
-  // ── Item selection ────────────────────────────────────────────
 
   function items(): HTMLAnchorElement[] {
     return Array.from(document.querySelectorAll('[data-nav-item]'));
@@ -85,8 +75,6 @@
     );
   }
 
-  // ── Keyboard handler ──────────────────────────────────────────
-
   document.addEventListener('keydown', (e) => {
     if (blocked()) return;
 
@@ -99,14 +87,14 @@
       case 'ArrowRight':
         if (idx < pages.length - 1) {
           e.preventDefault();
-          navigateTo(pages[idx + 1], 'forward');
+          go(pages[idx + 1]);
         }
         break;
 
       case 'ArrowLeft':
         if (idx > 0) {
           e.preventDefault();
-          navigateTo(pages[idx - 1], 'back');
+          go(pages[idx - 1]);
         }
         break;
 
@@ -140,7 +128,7 @@
         const parentPage = pages[idx];
         if (parentPage && norm(window.location.pathname) !== norm(parentPage)) {
           e.preventDefault();
-          navigateTo(parentPage, 'back');
+          go(parentPage);
         }
         break;
       }
