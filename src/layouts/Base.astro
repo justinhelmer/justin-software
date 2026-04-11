@@ -1,24 +1,20 @@
 ---
 import { ClientRouter } from 'astro:transitions';
+import { fade } from 'astro:transitions';
 import Nav from '../components/Nav.astro';
 import ShellPalette from '../components/ShellPalette.astro';
 import KeyboardNav from '../components/KeyboardNav.astro';
 import HelpOverlay from '../components/HelpOverlay.astro';
-import { fade } from 'astro:transitions';
 import '../styles/global.css';
-
-const contentFade = fade({ duration: '0.3s' });
 
 interface Props {
   title: string;
   description?: string;
-  subtitle?: string;
 }
 
 const {
   title,
   description = 'Justin Helmer — Principal Engineer. Infrastructure, AI systems, developer tooling.',
-  subtitle,
 } = Astro.props;
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 ---
@@ -42,10 +38,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
   <body>
     <div class="site">
       <Nav currentPath={Astro.url.pathname} />
-      <div class="subheader">
-        {subtitle && <p class="mono-label">{subtitle}</p>}
-      </div>
-      <main transition:animate={contentFade}>
+      <main transition:animate={fade({ duration: '0.3s' })}>
         <slot />
       </main>
     </div>
@@ -55,37 +48,24 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
   </body>
 </html>
 
-
 <style>
-  /*
-   * 3-row grid with fixed dimensions:
-   *   80px nav (matches Nav component height)
-   *   32px subheader (mono-label or empty — never changes)
-   *   1fr  content
-   */
   .site {
     display: grid;
-    grid-template-rows: 80px 32px 1fr;
+    grid-template-rows: 80px 1fr;
     min-height: 100vh;
     max-width: var(--max-width);
     margin: 0 auto;
     padding: 0 var(--page-padding);
   }
 
-  .subheader {
-    display: flex;
-    align-items: flex-end;
-    padding-bottom: var(--sp-4);
-  }
-
   main {
-    padding-top: var(--sp-6);
+    padding-top: var(--sp-10);
     padding-bottom: var(--sp-10);
   }
 
   @media (max-width: 640px) {
     .site {
-      grid-template-rows: 60px 28px 1fr;
+      grid-template-rows: 60px 1fr;
     }
   }
 </style>

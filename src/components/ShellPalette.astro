@@ -77,12 +77,13 @@ const routes = [
 
     function go(path: string) {
       close();
-      const a = document.createElement('a');
-      a.href = path;
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      // Click a real link in the page so Astro's ClientRouter handles the transition
+      const existing = document.querySelector(`a[href="${path}"]`) as HTMLAnchorElement | null;
+      if (existing) {
+        existing.click();
+      } else {
+        window.location.href = path;
+      }
     }
 
     function filter(query: string) {

@@ -7,8 +7,9 @@ const posts = await getCollection('writing');
 const sorted = latestPosts(posts, 2);
 ---
 
-<Base title="Home" subtitle="Principal Engineer">
+<Base title="Home">
   <section class="hero">
+    <p class="mono-label role">Principal Engineer</p>
     <h1 class="name">Justin Helmer</h1>
     <p class="bio">Infrastructure, AI systems, and developer tooling.</p>
   </section>
@@ -31,18 +32,8 @@ const sorted = latestPosts(posts, 2);
     margin-bottom: var(--sp-12);
   }
 
-  .identity {
-    display: flex;
-    align-items: center;
-    gap: var(--sp-5);
-  }
-
-  .photo {
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    border: 2px solid var(--border);
-    flex-shrink: 0;
+  .role {
+    margin-bottom: var(--sp-3);
   }
 
   .name {
