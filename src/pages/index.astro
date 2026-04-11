@@ -9,15 +9,8 @@ const sorted = latestPosts(posts, 2);
 
 <Base title="Home" subtitle="Principal Engineer · Webflow">
   <section class="hero">
-    <div class="hero-card">
-      <div class="avatar">
-        <img src="/images/justin.svg" alt="Justin Helmer" class="avatar-img" />
-      </div>
-      <div>
-        <h1 class="name">Justin Helmer</h1>
-        <p class="bio">I build the systems that other engineers build on.</p>
-      </div>
-    </div>
+    <h1 class="name">Justin Helmer</h1>
+    <p class="bio">I build the systems that other engineers build on.</p>
   </section>
 
   <section class="latest">
@@ -35,24 +28,7 @@ const sorted = latestPosts(posts, 2);
 
 <style>
   .hero {
-    margin-bottom: 48px;
-  }
-
-  .hero-card {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-  }
-
-  .avatar {
-    flex-shrink: 0;
-  }
-
-  .avatar-img {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    border: 2px solid var(--border);
+    margin-bottom: var(--sp-12);
   }
 
   .name {
@@ -61,38 +37,38 @@ const sorted = latestPosts(posts, 2);
     color: var(--text);
     line-height: 1.05;
     letter-spacing: -2px;
-    margin-bottom: 8px;
+    margin-bottom: var(--sp-3);
   }
 
   .bio {
     font-size: 16px;
     color: var(--text-secondary);
-    line-height: 1.8;
-    max-width: 500px;
+    line-height: 1.7;
+    max-width: 480px;
   }
 
   .latest {
     border-top: 1px solid var(--border);
-    padding-top: 24px;
+    padding-top: var(--sp-6);
   }
 
   .latest-label {
-    margin-bottom: 16px;
+    margin-bottom: var(--sp-4);
     font-size: 10px;
     letter-spacing: 2px;
   }
 
   .latest-grid {
-    display: flex;
-    gap: 40px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-8);
   }
 
   .latest-item {
-    flex: 1;
     text-decoration: none;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: var(--sp-1);
     transition: color 0.15s;
   }
 
@@ -111,18 +87,9 @@ const sorted = latestPosts(posts, 2);
       letter-spacing: -1px;
     }
 
-    .hero-card {
-      gap: 16px;
-    }
-
-    .avatar-img {
-      width: 48px;
-      height: 48px;
-    }
-
     .latest-grid {
-      flex-direction: column;
-      gap: 16px;
+      grid-template-columns: 1fr;
+      gap: var(--sp-4);
     }
   }
 </style>

@@ -40,7 +40,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
     <div class="site">
       <Nav currentPath={Astro.url.pathname} />
       <div class="subheader">
-        {subtitle ? <p class="mono-label">{subtitle}</p> : null}
+        {subtitle && <p class="mono-label">{subtitle}</p>}
       </div>
       <main transition:animate="fade">
         <slot />
@@ -59,12 +59,14 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 
 <style>
   /*
-   * 3-row grid: nav | subheader (fixed 48px) | content (fills rest).
-   * The subheader guarantees h1 sits at the same Y on every page.
+   * 3-row grid with fixed dimensions:
+   *   80px nav (matches Nav component height)
+   *   32px subheader (mono-label or empty — never changes)
+   *   1fr  content
    */
   .site {
     display: grid;
-    grid-template-rows: auto 48px 1fr;
+    grid-template-rows: 80px 32px 1fr;
     min-height: 100vh;
     max-width: var(--max-width);
     margin: 0 auto;
@@ -74,9 +76,17 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
   .subheader {
     display: flex;
     align-items: flex-end;
+    padding-bottom: var(--sp-4);
   }
 
   main {
-    padding-bottom: var(--page-padding);
+    padding-top: var(--sp-6);
+    padding-bottom: var(--sp-10);
+  }
+
+  @media (max-width: 640px) {
+    .site {
+      grid-template-rows: 60px 28px 1fr;
+    }
   }
 </style>

@@ -18,9 +18,7 @@ function isActive(href: string, current: string): boolean {
 ---
 
 <header class="nav" transition:name="site-nav" transition:persist>
-  <a href="/" class="mark">
-    <span class="mark-name">justin</span><span class="mark-dot">.</span><span class="mark-tld">software</span>
-  </a>
+  <a href="/" class="mark">justin<span class="dot">.</span>software</a>
   <nav class="links">
     {links.map(link => (
       <a
@@ -38,31 +36,25 @@ function isActive(href: string, current: string): boolean {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--page-padding) 0;
+    height: 80px;
   }
 
   .mark {
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 600;
     letter-spacing: -0.3px;
     text-decoration: none;
-  }
-
-  .mark-name {
     color: var(--text);
+    white-space: nowrap;
   }
 
-  .mark-dot {
-    color: #4353ff;
-  }
-
-  .mark-tld {
-    color: var(--text-muted);
+  .dot {
+    color: var(--accent);
   }
 
   .links {
     display: flex;
-    gap: 24px;
+    gap: var(--sp-6);
     font-family: var(--font-mono);
     font-size: 13px;
   }
@@ -86,9 +78,7 @@ function isActive(href: string, current: string): boolean {
   }
 
   @media (max-width: 640px) {
-    .links {
-      gap: 16px;
-      font-size: 12px;
-    }
+    .nav { height: 60px; }
+    .links { gap: var(--sp-4); font-size: 12px; }
   }
 </style>
