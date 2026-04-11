@@ -1,5 +1,4 @@
 ---
-// src/components/Nav.astro
 interface Props {
   currentPath: string;
 }
@@ -20,6 +19,7 @@ function isActive(href: string, current: string): boolean {
 
 <header class="nav" transition:name="site-nav" transition:persist>
   <a href="/" class="mark">
+    <img src="/images/avatar.png" alt="" class="avatar" />
     <span class="mark-name">justin</span><span class="mark-dot">.</span><span class="mark-tld">software</span>
   </a>
   <nav class="links">
@@ -38,14 +38,24 @@ function isActive(href: string, current: string): boolean {
   .nav {
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
+    align-items: center;
   }
 
   .mark {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     font-size: 14px;
     font-weight: 500;
     letter-spacing: -0.3px;
     text-decoration: none;
+  }
+
+  .avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
   }
 
   .mark-name {
@@ -53,7 +63,7 @@ function isActive(href: string, current: string): boolean {
   }
 
   .mark-dot {
-    color: var(--border);
+    color: #4353ff;
   }
 
   .mark-tld {
@@ -89,6 +99,11 @@ function isActive(href: string, current: string): boolean {
     .links {
       gap: 16px;
       font-size: 12px;
+    }
+
+    .avatar {
+      width: 24px;
+      height: 24px;
     }
   }
 </style>
