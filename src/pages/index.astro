@@ -8,11 +8,11 @@ const sorted = latestPosts(posts, 2);
 ---
 
 <Base title="Home">
-  <section class="hero">
+  <div class="page-header">
     <p class="mono-label role">Principal Engineer</p>
     <h1 class="name">Justin Helmer</h1>
-    <p class="bio">Infrastructure, AI systems, and developer tooling.</p>
-  </section>
+  </div>
+  <p class="bio">Infrastructure, AI systems, and developer tooling.</p>
 
   <section class="latest">
     <p class="mono-label latest-label">Latest</p>
@@ -28,12 +28,8 @@ const sorted = latestPosts(posts, 2);
 </Base>
 
 <style>
-  .hero {
-    margin-bottom: var(--sp-12);
-  }
-
   .role {
-    margin-bottom: var(--sp-3);
+    margin-bottom: var(--sp-2);
   }
 
   .name {
@@ -42,7 +38,6 @@ const sorted = latestPosts(posts, 2);
     color: var(--text);
     line-height: 1.05;
     letter-spacing: -2px;
-    margin-bottom: var(--sp-3);
   }
 
   .bio {
@@ -50,6 +45,7 @@ const sorted = latestPosts(posts, 2);
     color: var(--text-secondary);
     line-height: 1.7;
     max-width: 480px;
+    margin-bottom: var(--sp-12);
   }
 
   .latest {

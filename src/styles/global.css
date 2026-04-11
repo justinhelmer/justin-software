@@ -89,14 +89,22 @@ a:hover {
   color: var(--text-tertiary);
 }
 
-/* Page heading */
+/* Page header — fixed height so content below never shifts between pages.
+   Homepage uses this for role + name. Other pages for the h1 heading. */
+.page-header {
+  height: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  margin-bottom: var(--sp-8);
+}
+
 .page-heading {
   font-size: 44px;
   font-weight: 600;
   color: var(--text);
   line-height: 1.05;
   letter-spacing: -2px;
-  margin-bottom: var(--sp-12);
 }
 
 /* Shared list styles */
