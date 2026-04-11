@@ -27,15 +27,18 @@
 </div>
 
 <script>
-  const overlay = document.getElementById('help-overlay');
+  function getOverlay() {
+    return document.getElementById('help-overlay');
+  }
 
   function toggle() {
-    const hidden = overlay?.getAttribute('aria-hidden') === 'true';
-    overlay?.setAttribute('aria-hidden', hidden ? 'false' : 'true');
+    const el = getOverlay();
+    if (!el) return;
+    el.setAttribute('aria-hidden', el.getAttribute('aria-hidden') === 'true' ? 'false' : 'true');
   }
 
   function close() {
-    overlay?.setAttribute('aria-hidden', 'true');
+    getOverlay()?.setAttribute('aria-hidden', 'true');
   }
 
   document.addEventListener('keydown', (e) => {
@@ -44,7 +47,7 @@
     if (document.getElementById('shell-palette')?.getAttribute('aria-hidden') === 'false') return;
 
     if (e.key === '?') { e.preventDefault(); toggle(); }
-    else if (e.key === 'Escape' && overlay?.getAttribute('aria-hidden') === 'false') {
+    else if (e.key === 'Escape' && getOverlay()?.getAttribute('aria-hidden') === 'false') {
       e.preventDefault(); close();
     }
   });
