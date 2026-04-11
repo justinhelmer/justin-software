@@ -1,0 +1,53 @@
+---
+// src/layouts/Base.astro
+import { ClientRouter } from 'astro:transitions';
+import Nav from '../components/Nav.astro';
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = 'Justin Helmer — Principal Engineer. Systems architect. Infrastructure builder.' } = Astro.props;
+const canonicalURL = new URL(Astro.url.pathname, Astro.site);
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} | justin.software</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalURL} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate" type="application/rss+xml" title="justin.software" href="/feed.xml" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonicalURL} />
+    <ClientRouter />
+  </head>
+  <body>
+    <div class="page" transition:animate="fade">
+      <Nav currentPath={Astro.url.pathname} />
+      <main>
+        <slot />
+      </main>
+    </div>
+  </body>
+</html>
+
+<style>
+  .page {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: var(--page-padding);
+    min-height: 100vh;
+  }
+
+  main {
+    padding-top: 72px;
+  }
+</style>
