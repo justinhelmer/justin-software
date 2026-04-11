@@ -1,0 +1,74 @@
+---
+import Base from '../layouts/Base.astro';
+
+const links = [
+  { label: 'GitHub', value: 'justinhelmer', href: 'https://github.com/justinhelmer' },
+  { label: 'LinkedIn', value: '/in/justinhelmer', href: 'https://www.linkedin.com/in/justinhelmer' },
+  { label: 'Email', value: 'hello@justin.software', href: 'mailto:hello@justin.software' },
+];
+---
+
+<Base title="Links" description="Where to find Justin Helmer online.">
+  <h1 class="page-heading">Links</h1>
+  <ul class="link-list" role="list">
+    {links.map(link => (
+      <li class="link-row">
+        <a href={link.href} class="link-item" target="_blank" rel="noopener noreferrer">
+          <span class="link-label">{link.label}</span>
+          <span class="link-value">{link.value}</span>
+        </a>
+      </li>
+    ))}
+  </ul>
+</Base>
+
+<style>
+  .page-heading {
+    font-size: 44px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.05;
+    letter-spacing: -2px;
+    margin-bottom: 48px;
+  }
+
+  .link-list {
+    list-style: none;
+  }
+
+  .link-row {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .link-row:first-child {
+    border-top: 1px solid var(--border);
+  }
+
+  .link-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 12px 0;
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+
+  .link-label {
+    font-size: 14px;
+    color: var(--text-link);
+  }
+
+  .link-value {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-tertiary);
+  }
+
+  .link-item:hover .link-label {
+    color: var(--text);
+  }
+
+  .link-item:hover .link-value {
+    color: var(--text-muted);
+  }
+</style>
