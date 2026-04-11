@@ -95,7 +95,9 @@ const siteData = {
 
     function nav(path: string) {
       close();
-      window.location.href = path;
+      const astroNav = (window as any).__astro_navigate;
+      if (astroNav) astroNav(path);
+      else window.location.href = path;
     }
 
     const commands: Command[] = [

@@ -2,23 +2,20 @@
 /**
  * Keyboard navigation controller.
  *
- * The site is a 2D grid:
- *   horizontal axis = top-level pages (home → about → writing → links)
- *   vertical axis   = items within a page (posts, links)
+ * 2D grid:
+ *   ← / →   pages (home → about → writing → links)
+ *   ↑ / ↓   items within the current page
+ *   Enter    open selected (internal links navigate, external links open normally)
+ *   Escape   clear selection
+ *   Backspace go back to parent page
  *
- * ← / →   move between pages (always, regardless of selection)
- * ↑ / ↓   move between items on the current page
- * Enter    open the selected item (drills in)
- * Escape   clear selection / go back to parent
- *
- * Pages declare their items with `data-nav-item` on any <a> element.
- * This is the only contract — no class names, no element structure.
- * As the site grows, just add `data-nav-item` to new navigable elements.
+ * Contract: pages mark navigable items with `data-nav-item` on <a> elements.
  */
 ---
 
 <script>
   const PAGE_ORDER = ['/', '/about', '/writing', '/links'];
+  let cooldown = false; // Prevents arrow keys firing right after palette close
 
   function isInputFocused(): boolean {
     const el = document.activeElement;
@@ -32,8 +29,6 @@
   function isHelpOpen(): boolean {
     return document.getElementById('help-overlay')?.getAttribute('aria-hidden') === 'false';
   }
-
-  // ── Page index ────────────────────────────────────────────────
 
   function getPageIndex(path: string): number {
     const exact = PAGE_ORDER.indexOf(path);
@@ -50,13 +45,10 @@
     const current = getPageIndex(window.location.pathname);
     if (index === current && window.location.pathname === target) return;
     document.documentElement.dataset.navDirection = index > current ? 'forward' : 'back';
-    // Use Astro's navigate for proper View Transition support
     const nav = (window as any).__astro_navigate;
     if (nav) nav(target);
     else window.location.href = target;
   }
-
-  // ── Item selection ────────────────────────────────────────────
 
   function getItems(): HTMLAnchorElement[] {
     return Array.from(document.querySelectorAll('[data-nav-item]'));
@@ -78,10 +70,21 @@
     document.querySelectorAll('[data-nav-selected]').forEach(el => el.removeAttribute('data-nav-selected'));
   }
 
-  // ── Keyboard handler ──────────────────────────────────────────
+  function isExternalLink(el: HTMLAnchorElement): boolean {
+    const href = el.getAttribute('href') || '';
+    return href.startsWith('http') || href.startsWith('mailto:');
+  }
+
+  // Brief cooldown after palette closes so stale keystrokes don't fire
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      cooldown = true;
+      setTimeout(() => { cooldown = false; }, 100);
+    }
+  }, true); // capture phase
 
   document.addEventListener('keydown', (e) => {
-    if (isInputFocused() || isPaletteOpen() || isHelpOpen()) return;
+    if (isInputFocused() || isPaletteOpen() || isHelpOpen() || cooldown) return;
 
     const items = getItems();
     const sel = getSelected(items);
@@ -111,9 +114,14 @@
         break;
 
       case 'Enter':
-        if (sel >= 0) {
-          e.preventDefault();
-          items[sel].click();
+        if (sel >= 0 && items[sel]) {
+          if (isExternalLink(items[sel])) {
+            // Let the browser handle external links naturally (opens in new tab/mail)
+            items[sel].click();
+          } else {
+            e.preventDefault();
+            items[sel].click();
+          }
         }
         break;
 
@@ -125,7 +133,6 @@
         break;
 
       case 'Backspace':
-        // Go back to the parent page (e.g. /writing/post → /writing)
         if (window.location.pathname !== PAGE_ORDER[pageIdx]) {
           e.preventDefault();
           goToPage(pageIdx);
@@ -134,6 +141,5 @@
     }
   });
 
-  // Clear selection on page transition
   document.addEventListener('astro:after-swap', clearSelection);
 </script>
