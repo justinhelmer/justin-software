@@ -1,0 +1,80 @@
+---
+interface Post {
+  id: string;
+  data: {
+    title: string;
+    date: Date;
+  };
+}
+
+interface Props {
+  posts: Post[];
+  limit?: number;
+}
+
+const { posts, limit } = Astro.props;
+
+const sorted = posts
+  .sort((a, b) => b.data.date.getTime() - a.data.date.getTime())
+  .slice(0, limit);
+
+function formatDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  return `${y}.${m}`;
+}
+---
+
+<ul class="post-list" role="list">
+  {sorted.map(post => (
+    <li class="post-row">
+      <a href={`/writing/${post.id}`} class="post-link" data-post-id={post.id}>
+        <span class="post-title">{post.data.title}</span>
+        <span class="post-date mono-date">{formatDate(post.data.date)}</span>
+      </a>
+    </li>
+  ))}
+</ul>
+
+<style>
+  .post-list {
+    list-style: none;
+  }
+
+  .post-row {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .post-row:first-child {
+    border-top: 1px solid var(--border);
+  }
+
+  .post-link {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 12px 0;
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+
+  .post-title {
+    font-size: 14px;
+    color: var(--text-link);
+  }
+
+  .post-link:hover .post-title {
+    color: var(--text);
+  }
+
+  .post-link[data-selected] .post-title {
+    color: var(--text);
+  }
+
+  .post-link[data-selected] {
+    background: rgba(255, 255, 255, 0.03);
+    margin: 0 -8px;
+    padding: 12px 8px;
+    border-radius: 4px;
+  }
+</style>
