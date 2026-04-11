@@ -119,6 +119,20 @@ a:hover {
   transition: color 0.15s, background 0.15s;
 }
 
+/*
+ * View Transitions fallback fix.
+ * Astro's generated fallback selectors set animation-name but NOT
+ * animation-duration (the duration lives on ::view-transition-* which
+ * Safari doesn't support). This ensures the fallback animations
+ * are visible on all browsers.
+ */
+[data-astro-transition-fallback="old"] [data-astro-transition-scope],
+[data-astro-transition-fallback="new"] [data-astro-transition-scope] {
+  animation-duration: 0.25s;
+  animation-timing-function: ease;
+  animation-fill-mode: both;
+}
+
 /* Keyboard selection */
 [data-nav-selected] {
   background: rgba(255, 255, 255, 0.04);
