@@ -31,7 +31,7 @@ const routes = [
         type="text"
         autocomplete="off"
         spellcheck="false"
-        placeholder="cd ..."
+        placeholder="where to?"
       />
     </div>
     <div id="palette-completions" class="palette-completions"></div>
@@ -50,24 +50,34 @@ const routes = [
     type: 'page' | 'post';
   }
 
+  // Use AbortController so we can tear down all listeners cleanly on re-init
+  let controller: AbortController | null = null;
+
   function initPalette() {
+    // Tear down previous instance
+    if (controller) controller.abort();
+    controller = new AbortController();
+    const signal = controller.signal;
+
     const dataEl = document.getElementById('shell-data');
     if (!dataEl) return;
     const routes: Route[] = JSON.parse(dataEl.textContent || '[]');
 
-    const palette = document.getElementById('shell-palette');
-    const input = document.getElementById('palette-input') as HTMLInputElement | null;
-    const completionsEl = document.getElementById('palette-completions');
-    if (!palette || !input || !completionsEl) return;
+    const palette = document.getElementById('shell-palette')!;
+    const input = document.getElementById('palette-input') as HTMLInputElement;
+    const completionsEl = document.getElementById('palette-completions')!;
 
     let isOpen = false;
     let activeIndex = 0;
-    let matches: Route[] = [...routes];
+    let matches: Route[] = [];
 
     function fuzzy(query: string, text: string): boolean {
       if (!query) return true;
       const q = query.toLowerCase();
       const t = text.toLowerCase();
+      // Prefix match first (much stricter)
+      if (t.startsWith(q)) return true;
+      // Then subsequence match
       let qi = 0;
       for (let ti = 0; ti < t.length && qi < q.length; ti++) {
         if (t[ti] === q[qi]) qi++;
@@ -77,55 +87,57 @@ const routes = [
 
     function go(path: string) {
       close();
-      // Click a real link in the page so Astro's ClientRouter handles the transition
-      const existing = document.querySelector(`a[href="${path}"]`) as HTMLAnchorElement | null;
-      if (existing) {
-        existing.click();
-      } else {
-        window.location.href = path;
-      }
+      const link = document.querySelector(`a[href="${path}"]`) as HTMLAnchorElement | null;
+      if (link) link.click();
+      else window.location.href = path;
     }
 
-    function filter(query: string) {
-      const q = query.replace(/^cd\s+/, '').trim();
-      matches = routes.filter(r => fuzzy(q, r.label) || fuzzy(q, r.path));
-      activeIndex = 0;
+    function filter(raw: string) {
+      // Strip optional "cd " prefix — user can type "cd about" or just "about"
+      const q = raw.replace(/^cd\s+/i, '').trim();
+      if (!q) {
+        matches = [...routes];
+      } else {
+        matches = routes.filter(r => fuzzy(q, r.label) || fuzzy(q, r.path));
+      }
+      activeIndex = Math.min(activeIndex, Math.max(0, matches.length - 1));
       render();
     }
 
     function render() {
+      if (!matches.length) {
+        completionsEl.innerHTML = '<div class="sh-empty">no matches</div>';
+        return;
+      }
+
       let html = '';
       let lastType = '';
 
       matches.forEach((r, i) => {
-        if (r.type !== lastType && lastType !== '') {
+        if (r.type !== lastType && lastType) {
           html += '<div class="sh-divider"></div>';
         }
         lastType = r.type;
 
-        const active = i === activeIndex;
-        const dotClass = r.type === 'page' ? 'sh-dot-page' : 'sh-dot-post';
+        const cls = i === activeIndex ? 'sh-row sh-active' : 'sh-row';
+        const dot = r.type === 'page' ? 'sh-dot-page' : 'sh-dot-post';
 
-        html += `<div class="sh-row${active ? ' sh-active' : ''}" data-index="${i}">
-          <span class="sh-dot ${dotClass}"></span>
+        html += `<div class="${cls}" data-index="${i}">
+          <span class="sh-dot ${dot}"></span>
           <span class="sh-label">${r.label}</span>
           <span class="sh-detail">${r.path}</span>
         </div>`;
       });
 
-      if (!matches.length) {
-        html = '<div class="sh-row"><span class="sh-label" style="color:var(--pal-text-faint)">no matches</span></div>';
-      }
-
       completionsEl.innerHTML = html;
-      const activeEl = completionsEl.querySelector('.sh-active');
-      if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });
+      completionsEl.querySelector('.sh-active')?.scrollIntoView({ block: 'nearest' });
     }
 
     function open() {
       isOpen = true;
       palette.setAttribute('aria-hidden', 'false');
       input.value = '';
+      activeIndex = 0;
       filter('');
       setTimeout(() => input.focus({ preventScroll: true }), 50);
     }
@@ -137,9 +149,11 @@ const routes = [
       input.blur();
     }
 
-    input.addEventListener('input', () => filter(input.value));
+    // All listeners use the signal so they're cleaned up on re-init
+    input.addEventListener('input', () => filter(input.value), { signal });
 
     document.addEventListener('keydown', (e) => {
+      // Cmd+K toggles palette from anywhere
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         isOpen ? close() : open();
@@ -155,26 +169,33 @@ const routes = [
           break;
         case 'ArrowDown':
           e.preventDefault();
-          if (matches.length) { activeIndex = (activeIndex + 1) % matches.length; render(); }
+          if (matches.length) {
+            activeIndex = (activeIndex + 1) % matches.length;
+            render();
+          }
           break;
         case 'ArrowUp':
           e.preventDefault();
-          if (matches.length) { activeIndex = (activeIndex - 1 + matches.length) % matches.length; render(); }
+          if (matches.length) {
+            activeIndex = (activeIndex - 1 + matches.length) % matches.length;
+            render();
+          }
           break;
         case 'Enter':
           e.preventDefault();
           if (matches[activeIndex]) go(matches[activeIndex].path);
           break;
       }
-    });
+    }, { signal });
 
     completionsEl.addEventListener('click', (e) => {
       const row = (e.target as HTMLElement).closest('.sh-row');
       const idx = row?.getAttribute('data-index');
       if (idx != null && matches[+idx]) go(matches[+idx].path);
-    });
+    }, { signal });
 
-    palette.querySelector('.palette-backdrop')?.addEventListener('click', close);
+    palette.querySelector('.palette-backdrop')!
+      .addEventListener('click', close, { signal });
   }
 
   initPalette();
@@ -254,12 +275,6 @@ const routes = [
     caret-color: var(--pal-purple);
   }
   .palette-input::placeholder { color: var(--pal-text-faint); }
-  .palette-input.shake { animation: palette-shake 0.3s ease; }
-  @keyframes palette-shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-4px); }
-    75% { transform: translateX(4px); }
-  }
 
   .palette-completions {
     height: 240px;
@@ -267,6 +282,11 @@ const routes = [
     padding: 8px;
     font-family: var(--font-mono);
     font-size: 13px;
+  }
+
+  .sh-empty {
+    padding: 9px 14px;
+    color: var(--pal-text-faint);
   }
 
   .sh-divider { height: 1px; background: var(--pal-border); margin: 6px 12px; }
