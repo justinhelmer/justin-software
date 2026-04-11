@@ -13,12 +13,13 @@
       <div class="help-row"><kbd>↑</kbd> / <kbd>↓</kbd><span>Select list items</span></div>
       <div class="help-row"><kbd>Enter</kbd><span>Open selected</span></div>
       <div class="help-row"><kbd>Esc</kbd><span>Clear selection</span></div>
+      <div class="help-row"><kbd>Backspace</kbd><span>Back to parent</span></div>
     </div>
     <div class="help-section">
       <div class="help-group-title">Palette</div>
       <div class="help-row"><kbd>⌘K</kbd><span>Open command palette</span></div>
       <div class="help-row"><kbd>cd</kbd><span>Go to a page or post</span></div>
-      <div class="help-row"><kbd>ls</kbd><span>List pages or posts</span></div>
+      <div class="help-row"><kbd>ls</kbd><span>List posts</span></div>
       <div class="help-row"><kbd>help</kbd><span>Show commands</span></div>
     </div>
     <div class="help-section">
@@ -31,16 +32,6 @@
 <script>
   const overlay = document.getElementById('help-overlay');
 
-  function isInputFocused(): boolean {
-    const el = document.activeElement;
-    return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
-  }
-
-  function isPaletteOpen(): boolean {
-    const palette = document.getElementById('shell-palette');
-    return palette?.getAttribute('aria-hidden') === 'false';
-  }
-
   function toggle() {
     const hidden = overlay?.getAttribute('aria-hidden') === 'true';
     overlay?.setAttribute('aria-hidden', hidden ? 'false' : 'true');
@@ -51,23 +42,17 @@
   }
 
   document.addEventListener('keydown', (e) => {
-    if (isInputFocused() || isPaletteOpen()) return;
+    const active = document.activeElement;
+    if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) return;
+    if (document.getElementById('shell-palette')?.getAttribute('aria-hidden') === 'false') return;
 
-    if (e.key === '?') {
-      e.preventDefault();
-      toggle();
-      return;
-    }
-
-    if (e.key === 'Escape' && overlay?.getAttribute('aria-hidden') === 'false') {
-      e.preventDefault();
-      close();
-      return;
+    if (e.key === '?') { e.preventDefault(); toggle(); }
+    else if (e.key === 'Escape' && overlay?.getAttribute('aria-hidden') === 'false') {
+      e.preventDefault(); close();
     }
   });
 
   document.addEventListener('astro:before-preparation', close);
-  document.addEventListener('astro:after-swap', close);
 </script>
 
 <style>
@@ -118,9 +103,7 @@
     color: var(--text-tertiary);
   }
 
-  .help-section + .help-section {
-    margin-top: 12px;
-  }
+  .help-section + .help-section { margin-top: 12px; }
 
   .help-group-title {
     font-family: var(--font-mono);
@@ -140,9 +123,7 @@
     color: var(--text-muted);
   }
 
-  .help-row span {
-    color: var(--text-secondary);
-  }
+  .help-row span { color: var(--text-secondary); }
 
   kbd {
     font-family: var(--font-mono);
@@ -155,10 +136,6 @@
   }
 
   @media (max-width: 640px) {
-    .help-overlay {
-      bottom: 12px;
-      right: 12px;
-      left: 12px;
-    }
+    .help-overlay { bottom: 12px; right: 12px; left: 12px; }
   }
 </style>

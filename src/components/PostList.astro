@@ -1,4 +1,6 @@
 ---
+import { formatDate } from '../lib/config';
+
 interface Post {
   id: string;
   data: {
@@ -17,12 +19,6 @@ const { posts, limit } = Astro.props;
 const sorted = posts
   .sort((a, b) => b.data.date.getTime() - a.data.date.getTime())
   .slice(0, limit);
-
-function formatDate(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  return `${y}.${m}`;
-}
 ---
 
 <ul class="post-list" role="list">

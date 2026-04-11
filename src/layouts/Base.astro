@@ -1,5 +1,4 @@
 ---
-// src/layouts/Base.astro
 import { ClientRouter } from 'astro:transitions';
 import Nav from '../components/Nav.astro';
 import ShellPalette from '../components/ShellPalette.astro';
@@ -35,7 +34,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
   <body>
     <div class="page">
       <Nav currentPath={Astro.url.pathname} />
-      <main transition:name="main-content">
+      <main>
         <slot />
       </main>
     </div>
@@ -47,37 +46,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 
 <script>
   import { navigate } from 'astro:transitions/client';
-
-  // Expose navigate globally so KeyboardNav can use it
   (window as any).__astro_navigate = navigate;
-
-  // ── Directional slide transitions ───────────────────────────────
-  const PAGE_ORDER = ['/', '/about', '/writing', '/links'];
-
-  function getPageIndex(path: string): number {
-    const exact = PAGE_ORDER.indexOf(path);
-    if (exact !== -1) return exact;
-    for (let i = PAGE_ORDER.length - 1; i >= 0; i--) {
-      if (path.startsWith(PAGE_ORDER[i]) && PAGE_ORDER[i] !== '/') return i;
-    }
-    return 0;
-  }
-
-  // Set direction before any navigation (keyboard or click)
-  document.addEventListener('astro:before-preparation', (e: any) => {
-    // Only set if not already set by keyboard nav
-    if (!document.documentElement.dataset.navDirection) {
-      const from = getPageIndex(window.location.pathname);
-      const to = getPageIndex(new URL(e.to, window.location.origin).pathname);
-      document.documentElement.dataset.navDirection = to >= from ? 'forward' : 'back';
-    }
-  });
-
-  document.addEventListener('astro:after-swap', () => {
-    setTimeout(() => {
-      delete document.documentElement.dataset.navDirection;
-    }, 400);
-  });
 </script>
 
 <style>
@@ -90,41 +59,5 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 
   main {
     padding-top: 72px;
-  }
-</style>
-
-<style is:global>
-  /* Directional slide transitions — must be global to match Astro's generated attributes */
-  /* Forward: new content enters from right */
-  [data-nav-direction="forward"] [data-astro-transition="main-content"] {
-    animation: slide-in-right 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-  [data-nav-direction="forward"] [data-astro-transition="main-content"][data-astro-transition-fallback="old"] {
-    animation: slide-out-left 0.3s cubic-bezier(0.4, 0, 1, 1) both;
-  }
-
-  /* Back: new content enters from left */
-  [data-nav-direction="back"] [data-astro-transition="main-content"] {
-    animation: slide-in-left 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-  [data-nav-direction="back"] [data-astro-transition="main-content"][data-astro-transition-fallback="old"] {
-    animation: slide-out-right 0.3s cubic-bezier(0.4, 0, 1, 1) both;
-  }
-
-  @keyframes slide-in-right {
-    from { opacity: 0; transform: translateX(80px); }
-    to   { opacity: 1; transform: translateX(0); }
-  }
-  @keyframes slide-out-left {
-    from { opacity: 1; transform: translateX(0); }
-    to   { opacity: 0; transform: translateX(-80px); }
-  }
-  @keyframes slide-in-left {
-    from { opacity: 0; transform: translateX(-80px); }
-    to   { opacity: 1; transform: translateX(0); }
-  }
-  @keyframes slide-out-right {
-    from { opacity: 1; transform: translateX(0); }
-    to   { opacity: 0; transform: translateX(80px); }
   }
 </style>

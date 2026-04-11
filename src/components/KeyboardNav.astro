@@ -2,35 +2,29 @@
 /**
  * Keyboard navigation controller.
  *
- * 2D grid:
- *   ← / →   pages (home → about → writing → links)
- *   ↑ / ↓   items within the current page
- *   Enter    open selected (internal links navigate, external links open normally)
- *   Escape   clear selection
- *   Backspace go back to parent page
+ *   ← / →     pages (home → about → writing → links)
+ *   ↑ / ↓     items within the current page
+ *   Enter      open selected item
+ *   Escape     clear selection
+ *   Backspace  go back to parent page
  *
- * Contract: pages mark navigable items with `data-nav-item` on <a> elements.
+ * Pages mark navigable items with `data-nav-item` on <a> elements.
+ * Selection is indicated by `data-nav-selected` (styled in global.css).
  */
 ---
 
 <script>
   const PAGE_ORDER = ['/', '/about', '/writing', '/links'];
-  let cooldown = false; // Prevents arrow keys firing right after palette close
 
-  function isInputFocused(): boolean {
-    const el = document.activeElement;
-    return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
+  function blocked(): boolean {
+    const active = document.activeElement;
+    const inputFocused = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement;
+    const paletteOpen = document.getElementById('shell-palette')?.getAttribute('aria-hidden') === 'false';
+    const helpOpen = document.getElementById('help-overlay')?.getAttribute('aria-hidden') === 'false';
+    return inputFocused || paletteOpen || helpOpen;
   }
 
-  function isPaletteOpen(): boolean {
-    return document.getElementById('shell-palette')?.getAttribute('aria-hidden') === 'false';
-  }
-
-  function isHelpOpen(): boolean {
-    return document.getElementById('help-overlay')?.getAttribute('aria-hidden') === 'false';
-  }
-
-  function getPageIndex(path: string): number {
+  function pageIndex(path: string): number {
     const exact = PAGE_ORDER.indexOf(path);
     if (exact !== -1) return exact;
     for (let i = PAGE_ORDER.length - 1; i >= 0; i--) {
@@ -42,27 +36,24 @@
   function goToPage(index: number) {
     const target = PAGE_ORDER[index];
     if (!target) return;
-    const current = getPageIndex(window.location.pathname);
-    if (index === current && window.location.pathname === target) return;
-    document.documentElement.dataset.navDirection = index > current ? 'forward' : 'back';
     const nav = (window as any).__astro_navigate;
     if (nav) nav(target);
     else window.location.href = target;
   }
 
-  function getItems(): HTMLAnchorElement[] {
+  function items(): HTMLAnchorElement[] {
     return Array.from(document.querySelectorAll('[data-nav-item]'));
   }
 
-  function getSelected(items: HTMLAnchorElement[]): number {
-    return items.findIndex(el => el.hasAttribute('data-nav-selected'));
+  function selected(list: HTMLAnchorElement[]): number {
+    return list.findIndex(el => el.hasAttribute('data-nav-selected'));
   }
 
-  function selectItem(items: HTMLAnchorElement[], index: number) {
-    items.forEach(el => el.removeAttribute('data-nav-selected'));
-    if (index >= 0 && index < items.length) {
-      items[index].setAttribute('data-nav-selected', '');
-      items[index].scrollIntoView({ block: 'nearest' });
+  function select(list: HTMLAnchorElement[], i: number) {
+    list.forEach(el => el.removeAttribute('data-nav-selected'));
+    if (i >= 0 && i < list.length) {
+      list[i].setAttribute('data-nav-selected', '');
+      list[i].scrollIntoView({ block: 'nearest' });
     }
   }
 
@@ -70,72 +61,55 @@
     document.querySelectorAll('[data-nav-selected]').forEach(el => el.removeAttribute('data-nav-selected'));
   }
 
-  function isExternalLink(el: HTMLAnchorElement): boolean {
-    const href = el.getAttribute('href') || '';
-    return href.startsWith('http') || href.startsWith('mailto:');
-  }
-
-  // Brief cooldown after palette closes so stale keystrokes don't fire
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      cooldown = true;
-      setTimeout(() => { cooldown = false; }, 100);
-    }
-  }, true); // capture phase
+    if (blocked()) return;
 
-  document.addEventListener('keydown', (e) => {
-    if (isInputFocused() || isPaletteOpen() || isHelpOpen() || cooldown) return;
-
-    const items = getItems();
-    const sel = getSelected(items);
-    const pageIdx = getPageIndex(window.location.pathname);
+    const list = items();
+    const sel = selected(list);
+    const idx = pageIndex(window.location.pathname);
 
     switch (e.key) {
       case 'ArrowRight':
         e.preventDefault();
-        if (pageIdx < PAGE_ORDER.length - 1) goToPage(pageIdx + 1);
+        if (idx < PAGE_ORDER.length - 1) goToPage(idx + 1);
         break;
 
       case 'ArrowLeft':
         e.preventDefault();
-        if (pageIdx > 0) goToPage(pageIdx - 1);
+        if (idx > 0) goToPage(idx - 1);
         break;
 
       case 'ArrowDown':
-        if (items.length === 0) break;
+        if (!list.length) break;
         e.preventDefault();
-        selectItem(items, sel < items.length - 1 ? sel + 1 : 0);
+        if (sel < list.length - 1) select(list, sel + 1);
+        else if (sel === -1) select(list, 0);
         break;
 
       case 'ArrowUp':
-        if (items.length === 0) break;
+        if (!list.length) break;
         e.preventDefault();
-        selectItem(items, sel > 0 ? sel - 1 : items.length - 1);
+        if (sel > 0) select(list, sel - 1);
+        else if (sel === -1) select(list, list.length - 1);
         break;
 
       case 'Enter':
-        if (sel >= 0 && items[sel]) {
-          if (isExternalLink(items[sel])) {
-            // Let the browser handle external links naturally (opens in new tab/mail)
-            items[sel].click();
-          } else {
-            e.preventDefault();
-            items[sel].click();
-          }
+        if (sel >= 0 && list[sel]) {
+          const href = list[sel].getAttribute('href') || '';
+          const external = href.startsWith('http') || href.startsWith('mailto:');
+          if (!external) e.preventDefault();
+          list[sel].click();
         }
         break;
 
       case 'Escape':
-        if (sel >= 0) {
-          e.preventDefault();
-          clearSelection();
-        }
+        if (sel >= 0) { e.preventDefault(); clearSelection(); }
         break;
 
       case 'Backspace':
-        if (window.location.pathname !== PAGE_ORDER[pageIdx]) {
+        if (window.location.pathname !== PAGE_ORDER[idx]) {
           e.preventDefault();
-          goToPage(pageIdx);
+          goToPage(idx);
         }
         break;
     }

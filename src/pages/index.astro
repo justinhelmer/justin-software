@@ -1,17 +1,12 @@
 ---
 import Base from '../layouts/Base.astro';
 import { getCollection } from 'astro:content';
+import { formatDate } from '../lib/config';
 
 const posts = await getCollection('writing');
 const sorted = posts
   .sort((a, b) => b.data.date.getTime() - a.data.date.getTime())
   .slice(0, 2);
-
-function formatDate(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  return `${y}.${m}`;
-}
 ---
 
 <Base title="Home">
