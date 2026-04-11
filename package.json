@@ -2,6 +2,9 @@
   "name": "justin-software",
   "version": "1.0.0",
   "main": "index.js",
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "directories": {
     "doc": "docs"
   },
