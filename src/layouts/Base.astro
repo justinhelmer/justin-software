@@ -4,7 +4,10 @@ import Nav from '../components/Nav.astro';
 import ShellPalette from '../components/ShellPalette.astro';
 import KeyboardNav from '../components/KeyboardNav.astro';
 import HelpOverlay from '../components/HelpOverlay.astro';
+import { fade } from 'astro:transitions';
 import '../styles/global.css';
+
+const contentFade = fade({ duration: '0.3s' });
 
 interface Props {
   title: string;
@@ -14,7 +17,7 @@ interface Props {
 
 const {
   title,
-  description = 'Justin Helmer — Principal Engineer. Systems architect. Infrastructure builder.',
+  description = 'Justin Helmer — Principal Engineer. Infrastructure, AI systems, developer tooling.',
   subtitle,
 } = Astro.props;
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
@@ -42,7 +45,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
       <div class="subheader">
         {subtitle && <p class="mono-label">{subtitle}</p>}
       </div>
-      <main transition:animate="fade">
+      <main transition:animate={contentFade}>
         <slot />
       </main>
     </div>
