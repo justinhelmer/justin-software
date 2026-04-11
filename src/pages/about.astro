@@ -1,0 +1,33 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base title="About" description="Justin Helmer — Principal Engineer at Webflow.">
+  <h1 class="page-heading">About</h1>
+  <div class="about-text">
+    <p>I'm Justin Helmer, a Principal Engineer at Webflow based in the San Francisco Bay Area. I design and build the systems that power complex products — infrastructure, developer tooling, and the primitives that other engineers build on top of.</p>
+    <p>I've spent 17 years turning complexity into clarity. The work I care about most is the kind you stop noticing because it just holds.</p>
+  </div>
+</Base>
+
+<style>
+  .page-heading {
+    font-size: 44px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.05;
+    letter-spacing: -2px;
+    margin-bottom: 32px;
+  }
+
+  .about-text {
+    max-width: 560px;
+    font-size: 16px;
+    color: var(--text-secondary);
+    line-height: 1.8;
+  }
+
+  .about-text p + p {
+    margin-top: 1.5em;
+  }
+</style>
