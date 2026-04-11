@@ -194,40 +194,66 @@ const siteData = {
     function getCompletions(raw: string): Completion[] {
       const { cmd, args } = parseInput(raw);
 
-      // No input — show command list
+      // No input — show commands + all navigable routes
       if (!raw.trim()) {
-        return commands.map(c => ({
+        const cmds: Completion[] = commands.map(c => ({
           label: c.name,
           detail: c.describe(),
           value: c.name + ' ',
           action: () => setInput(c.name + ' '),
         }));
+        const pages: Completion[] = routes.map((r: any) => ({
+          label: r.type === 'page' ? r.label + '/' : r.label,
+          detail: r.path === '/' ? '~' : r.path,
+          value: `cd ${r.path}`,
+          action: () => nav(r.path),
+        }));
+        return [...cmds, ...pages];
       }
 
-      // Partial command match (no space yet) — complete command names
       const hasSpace = raw.includes(' ');
+
       if (!hasSpace) {
-        const matching = commands.filter(c => fuzzy(cmd, c.name));
-        // If exact match exists, show its completions
-        const exact = commands.find(c => c.name === cmd);
-        if (exact) return exact.complete(args);
-        // Otherwise complete command names
-        return matching.map(c => ({
-          label: c.name,
-          detail: c.describe(),
-          value: c.name + ' ',
-          action: () => setInput(c.name + ' '),
-        }));
+        // Partial input, no space — match commands AND routes together
+        const matchingCmds: Completion[] = commands
+          .filter(c => fuzzy(cmd, c.name))
+          .map(c => ({
+            label: c.name,
+            detail: c.describe(),
+            value: c.name + ' ',
+            action: () => setInput(c.name + ' '),
+          }));
+
+        const matchingRoutes: Completion[] = routes
+          .filter((r: any) => fuzzy(cmd, r.label) || fuzzy(cmd, r.path))
+          .map((r: any) => ({
+            label: r.type === 'page' ? r.label + '/' : r.label,
+            detail: r.path === '/' ? '~' : r.path,
+            value: `cd ${r.path}`,
+            action: () => nav(r.path),
+          }));
+
+        return [...matchingCmds, ...matchingRoutes];
       }
 
       // Command identified — delegate to its completer
       const command = commands.find(c => c.name === cmd);
       if (command) return command.complete(args);
 
-      // Unknown command — show help hint
+      // Unknown command — fuzzy match routes as fallback
+      const fallback: Completion[] = routes
+        .filter((r: any) => fuzzy(raw, r.label) || fuzzy(raw, r.path))
+        .map((r: any) => ({
+          label: r.type === 'page' ? r.label + '/' : r.label,
+          detail: r.path === '/' ? '~' : r.path,
+          value: `cd ${r.path}`,
+          action: () => nav(r.path),
+        }));
+      if (fallback.length > 0) return fallback;
+
       return [{
-        label: 'unknown command',
-        detail: 'type "help" for available commands',
+        label: 'no matches',
+        detail: 'try "help" for available commands',
         value: 'help',
         action: () => setInput('help'),
       }];
@@ -289,7 +315,10 @@ const siteData = {
       input.value = '';
       input.placeholder = 'type a command...';
       onInput();
-      input.focus();
+      // Focus after the CSS transition starts so the browser doesn't skip it
+      requestAnimationFrame(() => {
+        input.focus();
+      });
     }
 
     function close() {
