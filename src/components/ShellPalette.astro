@@ -14,7 +14,6 @@ const siteData = {
       type: 'post',
     })),
   ],
-  currentPath: Astro.url.pathname,
 };
 ---
 
@@ -24,19 +23,22 @@ const siteData = {
   <div class="palette-backdrop"></div>
   <div class="palette-container">
     <div class="palette-input-row">
-      <span class="palette-prompt" id="palette-prompt">~/justin.software $</span>
+      <span class="palette-prompt">~/justin.software <span class="prompt-dollar">$</span></span>
       <input
         id="palette-input"
         class="palette-input"
         type="text"
         autocomplete="off"
         spellcheck="false"
-        placeholder="type a command..."
+        autofocus
       />
     </div>
     <div id="palette-completions" class="palette-completions"></div>
-    <div class="palette-hint" id="palette-hint">
-      tab complete · enter execute · esc close
+    <div class="palette-hint">
+      <span><kbd>tab</kbd> complete</span>
+      <span><kbd>↑↓</kbd> select</span>
+      <span><kbd>↵</kbd> execute</span>
+      <span><kbd>esc</kbd> close</span>
     </div>
   </div>
 </div>
@@ -50,26 +52,20 @@ const siteData = {
     const palette = document.getElementById('shell-palette');
     const input = document.getElementById('palette-input') as HTMLInputElement | null;
     const completionsEl = document.getElementById('palette-completions');
-    const hintEl = document.getElementById('palette-hint');
-    if (!palette || !input || !completionsEl || !hintEl) return;
+    if (!palette || !input || !completionsEl) return;
 
     let isOpen = false;
     let activeIndex = 0;
-    let completions: { label: string; detail: string; value: string; action: () => void }[] = [];
-
-    // ── Command registry ──────────────────────────────────────────────
-    // Each command: { match, describe, complete, execute }
-    // match(input): does this command handle this input?
-    // describe(): one-line help string
-    // complete(args): return completion list for the arguments
-    // execute(args): run the command
 
     interface Completion {
       label: string;
       detail: string;
+      kind: 'command' | 'page' | 'post';
       value: string;
       action: () => void;
     }
+
+    let completions: Completion[] = [];
 
     interface Command {
       name: string;
@@ -104,18 +100,16 @@ const siteData = {
             .map((r: any) => ({
               label: r.type === 'page' ? r.label + '/' : r.label,
               detail: r.path === '/' ? '~' : r.path,
+              kind: r.type === 'page' ? 'page' : 'post',
               value: `cd ${r.path}`,
               action: () => nav(r.path),
             }));
         },
         execute(args: string) {
-          // Exact path match
           const exact = routes.find((r: any) => r.path === args || r.label === args.toLowerCase());
           if (exact) return nav(exact.path);
-          // Fuzzy single match
           const matches = routes.filter((r: any) => fuzzy(args, r.label) || fuzzy(args, r.path));
           if (matches.length === 1) return nav(matches[0].path);
-          // No match — flash the input
           input.classList.add('shake');
           setTimeout(() => input.classList.remove('shake'), 300);
         },
@@ -125,30 +119,20 @@ const siteData = {
         describe: () => 'List pages or posts',
         complete(args: string): Completion[] {
           const sections = [
-            { label: 'pages', detail: 'List all pages', value: 'ls pages' },
-            { label: 'posts', detail: 'List all posts', value: 'ls posts' },
+            { label: 'pages', detail: 'List all pages', value: 'ls pages', kind: 'command' as const },
+            { label: 'posts', detail: 'List all posts', value: 'ls posts', kind: 'command' as const },
           ];
-          if (!args) return sections.map(s => ({ ...s, action: () => setInput(s.value) }));
           return sections
             .filter(s => fuzzy(args, s.label))
             .map(s => ({ ...s, action: () => setInput(s.value) }));
         },
         execute(args: string) {
-          const target = args.trim().toLowerCase();
-          if (target === 'posts') {
-            nav('/writing');
-          } else {
-            // Show pages as completions
-            showCompletions(
-              routes
-                .filter((r: any) => r.type === 'page')
-                .map((r: any) => ({
-                  label: r.label + '/',
-                  detail: r.path,
-                  value: `cd ${r.path}`,
-                  action: () => nav(r.path),
-                }))
-            );
+          if (args.trim().toLowerCase() === 'posts') nav('/writing');
+          else {
+            showCompletions(routes.filter((r: any) => r.type === 'page').map((r: any) => ({
+              label: r.label + '/', detail: r.path, kind: 'page' as const,
+              value: `cd ${r.path}`, action: () => nav(r.path),
+            })));
           }
         },
       },
@@ -157,26 +141,18 @@ const siteData = {
         describe: () => 'Show available commands',
         complete(): Completion[] {
           return commands.map(c => ({
-            label: c.name,
-            detail: c.describe(),
-            value: c.name,
-            action: () => setInput(c.name + ' '),
+            label: c.name, detail: c.describe(), kind: 'command' as const,
+            value: c.name + ' ', action: () => setInput(c.name + ' '),
           }));
         },
         execute() {
-          showCompletions(
-            commands.map(c => ({
-              label: c.name,
-              detail: c.describe(),
-              value: c.name + ' ',
-              action: () => setInput(c.name + ' '),
-            }))
-          );
+          showCompletions(commands.map(c => ({
+            label: c.name, detail: c.describe(), kind: 'command' as const,
+            value: c.name + ' ', action: () => setInput(c.name + ' '),
+          })));
         },
       },
     ];
-
-    // ── Shell logic ───────────────────────────────────────────────────
 
     function setInput(val: string) {
       input.value = val;
@@ -193,69 +169,49 @@ const siteData = {
 
     function getCompletions(raw: string): Completion[] {
       const { cmd, args } = parseInput(raw);
+      const hasSpace = raw.includes(' ');
 
-      // No input — show commands + all navigable routes
+      // No input — show commands only (clean initial state)
       if (!raw.trim()) {
-        const cmds: Completion[] = commands.map(c => ({
+        return commands.map(c => ({
           label: c.name,
           detail: c.describe(),
+          kind: 'command' as const,
           value: c.name + ' ',
           action: () => setInput(c.name + ' '),
         }));
-        const pages: Completion[] = routes.map((r: any) => ({
-          label: r.type === 'page' ? r.label + '/' : r.label,
-          detail: r.path === '/' ? '~' : r.path,
-          value: `cd ${r.path}`,
-          action: () => nav(r.path),
+      }
+
+      // Has a space — command is locked, delegate to its completer
+      if (hasSpace) {
+        const command = commands.find(c => c.name === cmd);
+        if (command) return command.complete(args);
+      }
+
+      // No space — fuzzy match commands + routes simultaneously
+      const matchingCmds: Completion[] = commands
+        .filter(c => fuzzy(cmd, c.name))
+        .map(c => ({
+          label: c.name, detail: c.describe(), kind: 'command' as const,
+          value: c.name + ' ', action: () => setInput(c.name + ' '),
         }));
-        return [...cmds, ...pages];
-      }
 
-      const hasSpace = raw.includes(' ');
-
-      if (!hasSpace) {
-        // Partial input, no space — match commands AND routes together
-        const matchingCmds: Completion[] = commands
-          .filter(c => fuzzy(cmd, c.name))
-          .map(c => ({
-            label: c.name,
-            detail: c.describe(),
-            value: c.name + ' ',
-            action: () => setInput(c.name + ' '),
-          }));
-
-        const matchingRoutes: Completion[] = routes
-          .filter((r: any) => fuzzy(cmd, r.label) || fuzzy(cmd, r.path))
-          .map((r: any) => ({
-            label: r.type === 'page' ? r.label + '/' : r.label,
-            detail: r.path === '/' ? '~' : r.path,
-            value: `cd ${r.path}`,
-            action: () => nav(r.path),
-          }));
-
-        return [...matchingCmds, ...matchingRoutes];
-      }
-
-      // Command identified — delegate to its completer
-      const command = commands.find(c => c.name === cmd);
-      if (command) return command.complete(args);
-
-      // Unknown command — fuzzy match routes as fallback
-      const fallback: Completion[] = routes
-        .filter((r: any) => fuzzy(raw, r.label) || fuzzy(raw, r.path))
+      const matchingRoutes: Completion[] = routes
+        .filter((r: any) => fuzzy(cmd, r.label) || fuzzy(cmd, r.path))
         .map((r: any) => ({
           label: r.type === 'page' ? r.label + '/' : r.label,
           detail: r.path === '/' ? '~' : r.path,
+          kind: (r.type === 'page' ? 'page' : 'post') as 'page' | 'post',
           value: `cd ${r.path}`,
           action: () => nav(r.path),
         }));
-      if (fallback.length > 0) return fallback;
+
+      const results = [...matchingCmds, ...matchingRoutes];
+      if (results.length > 0) return results;
 
       return [{
-        label: 'no matches',
-        detail: 'try "help" for available commands',
-        value: 'help',
-        action: () => setInput('help'),
+        label: 'no matches', detail: 'try "help"', kind: 'command' as const,
+        value: 'help', action: () => setInput('help'),
       }];
     }
 
@@ -265,46 +221,59 @@ const siteData = {
       render();
     }
 
+    // ── Rendering ─────────────────────────────────────────────────────
+
+    function kindIcon(kind: string): string {
+      switch (kind) {
+        case 'command': return '<span class="kind-icon kind-cmd">$</span>';
+        case 'page':    return '<span class="kind-icon kind-page">~</span>';
+        case 'post':    return '<span class="kind-icon kind-post">✎</span>';
+        default:        return '';
+      }
+    }
+
     function render() {
-      completionsEl.innerHTML = completions.map((c, i) => {
+      // Group by kind for visual separation
+      let html = '';
+      let lastKind = '';
+
+      completions.forEach((c, i) => {
+        if (c.kind !== lastKind && lastKind !== '') {
+          html += '<div class="completion-divider"></div>';
+        }
+        lastKind = c.kind;
+
         const active = i === activeIndex;
-        return `<div class="completion${active ? ' active' : ''}" data-index="${i}">
+        html += `<div class="completion${active ? ' active' : ''}" data-index="${i}">
+          ${kindIcon(c.kind)}
           <span class="completion-label">${c.label}</span>
           <span class="completion-detail">${c.detail}</span>
         </div>`;
-      }).join('');
+      });
+
+      completionsEl.innerHTML = html;
+
+      // Scroll active into view
+      const activeEl = completionsEl.querySelector('.completion.active');
+      if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });
     }
 
     function onInput() {
-      const raw = input.value;
-      completions = getCompletions(raw);
+      completions = getCompletions(input.value);
       activeIndex = 0;
       render();
     }
 
     function execute() {
       const raw = input.value.trim();
-      if (!raw && completions[activeIndex]) {
-        completions[activeIndex].action();
-        return;
-      }
-
-      const { cmd, args } = parseInput(raw);
-
-      // If there's an active completion, use it
       if (completions[activeIndex]) {
         completions[activeIndex].action();
         return;
       }
-
-      // Try to find and execute the command
+      const { cmd, args } = parseInput(raw);
       const command = commands.find(c => c.name === cmd);
-      if (command) {
-        command.execute(args);
-      } else {
-        // Default: treat as cd
-        commands[0].execute(raw);
-      }
+      if (command) command.execute(args);
+      else commands[0].execute(raw);
     }
 
     // ── UI ─────────────────────────────────────────────────────────────
@@ -313,11 +282,12 @@ const siteData = {
       isOpen = true;
       palette.setAttribute('aria-hidden', 'false');
       input.value = '';
-      input.placeholder = 'type a command...';
       onInput();
-      // Focus after the CSS transition starts so the browser doesn't skip it
+      // Double rAF ensures the visibility transition has started before focus
       requestAnimationFrame(() => {
-        input.focus();
+        requestAnimationFrame(() => {
+          input.focus({ preventScroll: true });
+        });
       });
     }
 
@@ -345,7 +315,6 @@ const siteData = {
       } else if (e.key === 'Tab') {
         e.preventDefault();
         if (completions.length > 0) {
-          // Tab fills the input with the active completion's value
           const c = completions[activeIndex];
           if (c) setInput(c.value);
         }
@@ -418,18 +387,22 @@ const siteData = {
   }
 
   .palette-input-row {
-    padding: 12px 20px;
+    padding: 14px 20px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     border-bottom: 1px solid var(--border);
     font-family: var(--font-mono);
     font-size: 13px;
   }
 
   .palette-prompt {
-    color: var(--text-muted);
+    color: var(--text-tertiary);
     white-space: nowrap;
+  }
+
+  .prompt-dollar {
+    color: var(--text-secondary);
   }
 
   .palette-input {
@@ -437,7 +410,7 @@ const siteData = {
     background: none;
     border: none;
     outline: none;
-    color: var(--text-link);
+    color: var(--text);
     font-family: var(--font-mono);
     font-size: 13px;
     caret-color: var(--text-secondary);
@@ -457,34 +430,72 @@ const siteData = {
     75% { transform: translateX(4px); }
   }
 
+  /* Fixed height completions area — no layout shift */
   .palette-completions {
-    padding: 8px 20px;
+    padding: 6px 12px;
     font-family: var(--font-mono);
     font-size: 13px;
-    max-height: 280px;
+    height: 240px;
     overflow-y: auto;
   }
 
+  .completion-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 8px;
+  }
+
   .completion {
-    padding: 8px 10px;
+    padding: 7px 10px;
     display: flex;
-    justify-content: space-between;
     align-items: center;
     border-radius: 4px;
     cursor: pointer;
-    gap: 16px;
+    gap: 10px;
   }
 
   .completion.active {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.06);
   }
 
-  .completion:hover {
-    background: rgba(255, 255, 255, 0.03);
+  .completion:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.025);
+  }
+
+  /* Kind icons — colored badges like ohmyzsh */
+  .kind-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .kind-cmd {
+    background: rgba(136, 192, 208, 0.15);
+    color: #88c0d0;
+  }
+
+  .kind-page {
+    background: rgba(163, 190, 140, 0.15);
+    color: #a3be8c;
+  }
+
+  .kind-post {
+    background: rgba(235, 203, 139, 0.15);
+    color: #ebcb8b;
   }
 
   .completion-label {
     color: var(--text-link);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .completion.active .completion-label {
@@ -494,17 +505,33 @@ const siteData = {
   .completion-detail {
     color: var(--text-tertiary);
     font-size: 11px;
+    flex-shrink: 0;
     text-align: right;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   .palette-hint {
-    padding: 6px 20px 10px;
+    padding: 8px 20px;
     font-size: 10px;
     font-family: var(--font-mono);
     color: var(--text-tertiary);
     border-top: 1px solid var(--border);
+    display: flex;
+    gap: 16px;
+  }
+
+  .palette-hint kbd {
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.04);
+    padding: 1px 4px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    font-size: 10px;
+    margin-right: 3px;
+  }
+
+  @media (max-width: 640px) {
+    .palette-completions {
+      height: 200px;
+    }
   }
 </style>
