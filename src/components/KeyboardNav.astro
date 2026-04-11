@@ -13,7 +13,18 @@
 ---
 
 <script>
-  import { navigate } from 'astro:transitions/client';
+  /** Navigate via a programmatic <a> click so Astro's ClientRouter
+   *  intercepts it and runs View Transitions automatically. */
+  function go(path: string) {
+    const norm = (p: string) => p === '/' ? p : p.replace(/\/$/, '');
+    if (norm(window.location.pathname) === norm(path)) return;
+    const a = document.createElement('a');
+    a.href = path;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
 
   function blocked(): boolean {
     const active = document.activeElement;
@@ -33,24 +44,14 @@
     return pages;
   }
 
-  function norm(path: string): string {
-    if (path === '/') return path;
-    return path.replace(/\/$/, '');
-  }
-
   function currentIndex(pages: string[]): number {
-    const path = norm(window.location.pathname);
-    const exact = pages.indexOf(path);
+    const p = window.location.pathname.replace(/\/$/, '') || '/';
+    const exact = pages.indexOf(p);
     if (exact !== -1) return exact;
     for (let i = pages.length - 1; i >= 0; i--) {
-      if (path.startsWith(pages[i]) && pages[i] !== '/') return i;
+      if (p.startsWith(pages[i]) && pages[i] !== '/') return i;
     }
     return 0;
-  }
-
-  function go(path: string) {
-    if (norm(window.location.pathname) === norm(path)) return;
-    navigate(path);
   }
 
   function items(): HTMLAnchorElement[] {
@@ -126,7 +127,8 @@
 
       case 'Backspace': {
         const parentPage = pages[idx];
-        if (parentPage && norm(window.location.pathname) !== norm(parentPage)) {
+        const current = window.location.pathname.replace(/\/$/, '') || '/';
+        if (parentPage && current !== parentPage) {
           e.preventDefault();
           go(parentPage);
         }
