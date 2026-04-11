@@ -4,9 +4,21 @@ import PostList from '../../components/PostList.astro';
 import { getCollection } from 'astro:content';
 
 const posts = await getCollection('writing');
+const hasPosts = posts.length > 0;
 ---
 
 <Base title="Writing" description="Technical writing on systems, infrastructure, and engineering.">
   <h1 class="page-heading">Writing</h1>
-  <PostList posts={posts} />
+  {hasPosts ? (
+    <PostList posts={posts} />
+  ) : (
+    <p class="empty">Coming soon.</p>
+  )}
 </Base>
+
+<style>
+  .empty {
+    color: var(--text-tertiary);
+    font-size: 15px;
+  }
+</style>

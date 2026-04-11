@@ -13,21 +13,23 @@ const sorted = latestPosts(posts, 2);
     <div class="identity-text">
       <p class="mono-label role">Principal Engineer</p>
       <h1 class="name">Justin Helmer</h1>
-      <p class="bio">Building AI systems at global scale.</p>
+      <p class="bio">Building systems at global scale.</p>
     </div>
   </div>
 
-  <section class="latest">
-    <p class="mono-label latest-label">Latest</p>
-    <div class="latest-grid">
-      {sorted.map(post => (
-        <a href={`/writing/${post.id}`} class="latest-item">
-          <span class="latest-title">{post.data.title}</span>
-          <span class="mono-date">{formatDate(post.data.date)}</span>
-        </a>
-      ))}
-    </div>
-  </section>
+  {sorted.length > 0 && (
+    <section class="latest">
+      <p class="mono-label latest-label">Latest</p>
+      <div class="latest-grid">
+        {sorted.map(post => (
+          <a href={`/writing/${post.id}`} class="latest-item">
+            <span class="latest-title">{post.data.title}</span>
+            <span class="mono-date">{formatDate(post.data.date)}</span>
+          </a>
+        ))}
+      </div>
+    </section>
+  )}
 </Base>
 
 <style>
