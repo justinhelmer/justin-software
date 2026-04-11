@@ -125,41 +125,6 @@ const siteData = {
         },
       },
       {
-        name: 'ls',
-        describe: () => 'List posts',
-        complete(args: string): Completion[] {
-          const posts = routes.filter(r => r.type === 'post');
-          return posts
-            .filter(r => !args || fuzzy(args, r.path.split('/').pop() || ''))
-            .map(r => {
-              const slug = r.path.split('/').pop() || r.path;
-              return {
-                label: slug,
-                detail: r.label,
-                kind: 'post' as const,
-                value: `cd ${r.path}`,
-                action: () => nav(r.path),
-              };
-            });
-        },
-        execute() {
-          const posts = routes.filter(r => r.type === 'post');
-          completions = posts.map(r => {
-            const slug = r.path.split('/').pop() || r.path;
-            return {
-              label: slug,
-              detail: r.label,
-              kind: 'post' as const,
-              value: `cd ${r.path}`,
-              action: () => nav(r.path),
-            };
-          });
-          activeIndex = 0;
-          render();
-          input.value = '';
-        },
-      },
-      {
         name: 'help',
         describe: () => 'Show available commands',
         complete(): Completion[] {
