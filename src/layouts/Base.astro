@@ -74,7 +74,7 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
   });
 </script>
 
-<style is:global>
+<style>
   .page {
     max-width: var(--max-width);
     margin: 0 auto;
@@ -85,27 +85,22 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
   main {
     padding-top: 72px;
   }
+</style>
 
-  /* ── Directional slide transitions ──────────────────────────── */
-  /* Forward: content slides in from right, old exits left */
-  [data-nav-direction="forward"] main[data-astro-transition="main-content"] {
+<style is:global>
+  /* Directional slide transitions — must be global to match Astro's generated attributes */
+  [data-nav-direction="forward"] [data-astro-transition="main-content"] {
     animation: slide-in-right 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
   [data-nav-direction="forward"] [data-astro-transition="main-content"][data-astro-transition-fallback="old"] {
     animation: slide-out-left 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
-  /* Back: content slides in from left, old exits right */
-  [data-nav-direction="back"] main[data-astro-transition="main-content"] {
+  [data-nav-direction="back"] [data-astro-transition="main-content"] {
     animation: slide-in-left 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
   [data-nav-direction="back"] [data-astro-transition="main-content"][data-astro-transition-fallback="old"] {
     animation: slide-out-right 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-
-  /* Default (no direction set): crossfade */
-  main[data-astro-transition="main-content"] {
-    animation: fade-in 0.2s ease both;
   }
 
   @keyframes slide-in-right {
@@ -123,9 +118,5 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
   @keyframes slide-out-right {
     from { opacity: 1; transform: translateX(0); }
     to   { opacity: 0; transform: translateX(40px); }
-  }
-  @keyframes fade-in {
-    from { opacity: 0; }
-    to   { opacity: 1; }
   }
 </style>
