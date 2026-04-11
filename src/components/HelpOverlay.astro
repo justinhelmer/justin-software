@@ -1,0 +1,163 @@
+---
+---
+
+<div id="help-overlay" class="help-overlay" aria-hidden="true">
+  <div class="help-panel">
+    <div class="help-header">
+      <span class="help-title">Keyboard shortcuts</span>
+      <span class="help-close">esc to close</span>
+    </div>
+    <div class="help-section">
+      <div class="help-group-title">Navigation</div>
+      <div class="help-row"><kbd>⌘K</kbd><span>Open command palette</span></div>
+      <div class="help-row"><kbd>g h</kbd><span>Go home</span></div>
+      <div class="help-row"><kbd>g a</kbd><span>Go to about</span></div>
+      <div class="help-row"><kbd>g w</kbd><span>Go to writing</span></div>
+      <div class="help-row"><kbd>g l</kbd><span>Go to links</span></div>
+    </div>
+    <div class="help-section">
+      <div class="help-group-title">Lists</div>
+      <div class="help-row"><kbd>j</kbd> / <kbd>k</kbd><span>Move down / up</span></div>
+      <div class="help-row"><kbd>Enter</kbd><span>Open selected</span></div>
+      <div class="help-row"><kbd>Esc</kbd><span>Clear selection</span></div>
+    </div>
+    <div class="help-section">
+      <div class="help-group-title">Meta</div>
+      <div class="help-row"><kbd>?</kbd><span>Toggle this help</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const overlay = document.getElementById('help-overlay');
+
+  function isInputFocused(): boolean {
+    const el = document.activeElement;
+    return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
+  }
+
+  function isPaletteOpen(): boolean {
+    const palette = document.getElementById('shell-palette');
+    return palette?.getAttribute('aria-hidden') === 'false';
+  }
+
+  function toggle() {
+    const hidden = overlay?.getAttribute('aria-hidden') === 'true';
+    overlay?.setAttribute('aria-hidden', hidden ? 'false' : 'true');
+  }
+
+  function close() {
+    overlay?.setAttribute('aria-hidden', 'true');
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (isInputFocused() || isPaletteOpen()) return;
+
+    if (e.key === '?') {
+      e.preventDefault();
+      toggle();
+      return;
+    }
+
+    if (e.key === 'Escape' && overlay?.getAttribute('aria-hidden') === 'false') {
+      e.preventDefault();
+      close();
+      return;
+    }
+  });
+
+  document.addEventListener('astro:before-preparation', close);
+</script>
+
+<style>
+  .help-overlay {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 90;
+    transition: opacity 0.15s, visibility 0.15s, transform 0.15s;
+  }
+
+  .help-overlay[aria-hidden='true'] {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(8px);
+    pointer-events: none;
+  }
+
+  .help-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    min-width: 260px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  }
+
+  .help-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .help-title {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .help-close {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-tertiary);
+  }
+
+  .help-section + .help-section {
+    margin-top: 12px;
+  }
+
+  .help-group-title {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin-bottom: 6px;
+  }
+
+  .help-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px 0;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .help-row span {
+    color: var(--text-secondary);
+  }
+
+  kbd {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 1px 5px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+  }
+
+  @media (max-width: 640px) {
+    .help-overlay {
+      bottom: 12px;
+      right: 12px;
+      left: 12px;
+    }
+  }
+</style>
