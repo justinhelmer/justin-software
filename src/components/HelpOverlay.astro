@@ -9,8 +9,8 @@
     </div>
     <div class="help-section">
       <div class="help-group-title">Navigate</div>
-      <div class="help-row"><kbd>←</kbd><kbd>→</kbd><span>Previous / next page</span></div>
-      <div class="help-row"><kbd>↑</kbd><kbd>↓</kbd><span>Select list items</span></div>
+      <div class="help-row"><span class="keys"><kbd>←</kbd> / <kbd>→</kbd></span><span>Previous / next page</span></div>
+      <div class="help-row"><span class="keys"><kbd>↑</kbd> / <kbd>↓</kbd></span><span>Select list items</span></div>
       <div class="help-row"><kbd>Enter</kbd><span>Open selected</span></div>
       <div class="help-row"><kbd>Esc</kbd><span>Clear selection</span></div>
       <div class="help-row"><kbd>Backspace</kbd><span>Back to parent</span></div>
@@ -115,8 +115,8 @@
   }
 
   .help-row {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: 120px 1fr;
     align-items: center;
     padding: 3px 0;
     font-size: 12px;
@@ -124,6 +124,13 @@
   }
 
   .help-row span { color: var(--text-secondary); }
+
+  .keys {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--text-muted);
+  }
 
   kbd {
     font-family: var(--font-mono);
