@@ -8,6 +8,12 @@ import Base from '../layouts/Base.astro';
     <p>I started as a front-end designer, then moved into front-end technologies and frameworks, then into server-side technologies and systems. During the mobile boom, I spent time in large-scale e-commerce enterprise. I then spent the next five years helping build AI-powered optimization systems before the current wave.</p>
     <p>From there, I moved into large-scale platform engineering, solving increasingly hard problems at scale, most recently through M&A.</p>
     <p>Today I am building the future where anyone can harness the full capability of AI to realize their potential. The future is for the builders.</p>
+    <p class="resume-line">
+      <a href="/resume" class="resume-link" data-nav-item target="_blank" rel="noopener noreferrer">
+        <span class="resume-text">the rest is on paper</span>
+        <svg class="resume-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg>
+      </a>
+    </p>
   </div>
 </Base>
 
@@ -21,5 +27,40 @@ import Base from '../layouts/Base.astro';
 
   .about-text p + p {
     margin-top: 1.5em;
+  }
+
+  /* Understated résumé link — mono, muted, brightens on hover. */
+  .resume-line {
+    margin-top: 2.5em;
+  }
+
+  .resume-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-tertiary);
+    text-decoration: none;
+    transition: color 0.15s, gap 0.15s;
+  }
+
+  .resume-text {
+    border-bottom: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+    padding-bottom: 1px;
+  }
+
+  .resume-arrow {
+    flex-shrink: 0;
+    transition: transform 0.15s;
+  }
+
+  .resume-link:hover {
+    color: var(--text-secondary);
+    gap: 8px;
+  }
+
+  .resume-link:hover .resume-arrow {
+    transform: translate(1px, -1px);
   }
 </style>
