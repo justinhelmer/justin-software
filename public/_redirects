@@ -1,0 +1,5 @@
+# Serve the resume PDF at the clean /resume URL.
+# 200 = rewrite (proxy): the URL stays /resume, the body is resume.pdf,
+# and Cloudflare serves it with Content-Type: application/pdf so the
+# browser decides whether to view inline or download.
+/resume /resume.pdf 200
