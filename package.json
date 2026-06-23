@@ -13,6 +13,7 @@
     "build": "astro build",
     "preview": "npm run build && wrangler dev",
     "generate-types": "wrangler types",
+    "test": "vitest run",
     "deploy": "npm run build && wrangler deploy"
   },
   "keywords": [],
@@ -28,6 +29,7 @@
     "astro": "^6.1.5"
   },
   "devDependencies": {
+    "vitest": "^3.2.6",
     "wrangler": "^4.81.1"
   },
   "overrides": {
