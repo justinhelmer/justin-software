@@ -1,0 +1,78 @@
+---
+/**
+ * Make Cloudflare's Email Address Obfuscation survive SPA navigation.
+ *
+ * Cloudflare rewrites emails into `<a class="__cf_email__" data-cfemail="…">`
+ * markup at the edge (bot/scraper protection — the address is never sent as
+ * plaintext) and decodes it with an injected `email-decode.min.js` that runs
+ * only on the initial full page load. Astro's ClientRouter dedupes that script
+ * across view transitions, so freshly swapped-in `.__cf_email__` links stay
+ * obfuscated as "[email protected]".
+ *
+ * There is no official Cloudflare re-init hook, so on every `astro:page-load`
+ * (fires on initial load AND after each SPA navigation) we re-run the decode:
+ *   1. re-inject Cloudflare's own decoder script, then
+ *   2. self-heal — if any `.__cf_email__` remain, decode them ourselves with
+ *      the shared `cfDecode` helper (Cloudflare's algorithm).
+ *
+ * Locally (astro dev / wrangler dev) Cloudflare obfuscation never runs, so
+ * there are no `.__cf_email__` nodes and this is a no-op.
+ */
+---
+
+<script>
+  import { cfDecode } from '../lib/email';
+
+  const CF_DECODER_SELECTOR =
+    'script[src*="/cdn-cgi/scripts/"][src*="email-decode"]';
+
+  // Captured once; persists across navigations in this module's closure.
+  let decoderSrc: string | null =
+    document
+      .querySelector<HTMLScriptElement>(CF_DECODER_SELECTOR)
+      ?.getAttribute('src') ?? null;
+
+  function hasObfuscated(): boolean {
+    return !!document.querySelector('.__cf_email__');
+  }
+
+  /** Fallback: decode any leftover obfuscated nodes ourselves. */
+  function selfDecode(): void {
+    document.querySelectorAll<HTMLElement>('.__cf_email__').forEach((el) => {
+      const token = el.getAttribute('data-cfemail');
+      if (!token) return;
+      const email = cfDecode(token);
+      el.textContent = email;
+      el.classList.remove('__cf_email__');
+      if (el.tagName === 'A') el.setAttribute('href', `mailto:${email}`);
+    });
+    // Links that carry the token in the href instead of data-cfemail.
+    document
+      .querySelectorAll<HTMLAnchorElement>('a[href*="/cdn-cgi/l/email-protection#"]')
+      .forEach((a) => {
+        const token = a.getAttribute('href')!.split('#')[1];
+        if (token) a.setAttribute('href', `mailto:${cfDecode(token)}`);
+      });
+  }
+
+  function rerunDecoder(): void {
+    if (!hasObfuscated()) return; // already decoded (and the local/dev case)
+
+    if (decoderSrc) {
+      // Prefer Cloudflare's own decoder so we track any future changes.
+      const s = document.createElement('script');
+      s.src = decoderSrc;
+      const finish = () => {
+        if (hasObfuscated()) selfDecode(); // self-heal if CF's script no-opped
+        s.remove();
+      };
+      s.addEventListener('load', finish);
+      s.addEventListener('error', finish);
+      document.body.appendChild(s);
+    } else {
+      selfDecode();
+    }
+  }
+
+  document.addEventListener('astro:page-load', rerunDecoder);
+</script>
