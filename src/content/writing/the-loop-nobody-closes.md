@@ -14,7 +14,7 @@ Call it the SDLC if you want the textbook name: plan, build, ship, live with it,
 
 Shipping fast was never about speed. It's about how many times you [get to go around one loop](https://www.honeycomb.io/blog/you-had-one-job-why-twenty-years-of-devops-has-failed-to-do-it): deploy, observe, learn.
 
-**Deploy → observe → learn → (and back to deploy.)**
+<img src="/diagrams/a1f5ec21.svg" alt="Deploy leads to observe leads to learn, back to deploy" />
 
 Every turn round that loop teaches you something about what you built. A deploy nobody observes is an open loop. You shipped. You learned nothing.
 
@@ -22,8 +22,7 @@ Every turn round that loop teaches you something about what you built. A deploy 
 
 Look at how software actually gets built. You'll find two loops running side by side, not one. Developers have a fast, satisfying loop: write, test, review, merge. It lives in the editor. It answers in seconds. It feels good every single time. Operators have a loop too: get paged, investigate, fix. It runs at three in the morning, alone, lit by a dashboard.
 
-**Developer loop:** write → test → review → merge → *(deploys to production)*
-**Operator loop:** production breaks → page → investigate → fix → *(back to page, next time)*
+<img src="/diagrams/a937776d.svg" alt="Developer loop of write, test, review, merge, deploying to production; operator loop of page, investigate, fix, triggered by production incidents" />
 
 Neither loop touches the other. The developer's ends at merge. The operator's starts at an alert. What a change did in production reaches the person who wrote it only by accident, usually as a Slack message: "hey, did anything change yesterday?"
 
