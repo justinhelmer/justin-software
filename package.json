@@ -21,16 +21,16 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@astrojs/rss": "^4.0.18",
+    "@astrojs/rss": "^4.0.19",
     "@astrojs/sitemap": "^3.7.2",
     "@fontsource-variable/inter": "^5.2.8",
     "@fontsource-variable/plus-jakarta-sans": "^5.2.8",
     "@fontsource/fira-code": "^5.2.7",
-    "astro": "^6.1.5"
+    "astro": "^6.4.8"
   },
   "devDependencies": {
-    "vitest": "^3.2.6",
-    "wrangler": "^4.81.1"
+    "vitest": "^3.2.7",
+    "wrangler": "^4.131.0"
   },
   "overrides": {
     "vite": "^7"
