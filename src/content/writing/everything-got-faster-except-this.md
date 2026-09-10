@@ -18,4 +18,4 @@ It's not discipline. It's arithmetic. Instrumenting a change properly and readin
 
 That's the part of the job I'm working on now, at [Polylane](https://polylane.com). Not another dashboard. The piece that was always missing: production knowledge handed to whoever's about to write the next line of code, automatically, before they ask for it.
 
-I wrote up what that actually looks like. Real incident, real numbers, real code, [on the Polylane blog](https://polylane.com/blog/close-the-loop). Worth the longer read if any of this sounds familiar.
+I wrote up what that actually looks like. Real incident, real numbers, real code: [The Loop Nobody Closes](/writing/the-loop-nobody-closes). Worth the longer read if any of this sounds familiar.
